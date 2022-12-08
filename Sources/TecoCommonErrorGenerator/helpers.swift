@@ -28,7 +28,7 @@ func getErrorDomain(from code: ErrorCode) -> ErrorCode? {
     return .init(components[0])
 }
 
-func getErrorDomains(from codes: [ErrorCode]? = nil) -> [ErrorCode]  {
+func getErrorDomains(from codes: [ErrorCode]? = nil) -> [ErrorCode] {
     let codes = codes ?? getErrorCodes()
     let domains = OrderedSet(codes.compactMap(getErrorDomain))
     return domains.sorted()

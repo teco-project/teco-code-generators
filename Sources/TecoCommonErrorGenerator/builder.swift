@@ -55,15 +55,28 @@ func buildErrorCustomStringConvertibleDecl(_ qualifiedTypeName: String) -> Exten
     }
 }
 
-func buildToCommonErrorDecl(_ qualifiedName: String, commonErrorType: String) -> ExtensionDecl {
+func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorType: String, baseErrorShortname: String) -> ExtensionDecl {
     ExtensionDecl("extension \(qualifiedName)") {
         FunctionDecl("""
-            public func toCommonError() -> \(raw: commonErrorType)? {
-                guard let code = \(raw: commonErrorType).Code(rawValue: self.error.rawValue) else {
-                    return nil
+            public func to\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
+                guard let code = \(raw: baseErrorType).Code(rawValue: self.error.rawValue) else {
+                    fatalError(\(literal: """
+                        Unexpected internal conversion error!
+                        Please file a bug at https://github.com/teco-project/teco to help address the problem.
+                        """))
                 }
-                return \(raw: commonErrorType)(code, context: self.context)
+                return \(raw: baseErrorType)(code, context: self.context)
             }
             """)
+    }
+}
+
+func buildErrorDomainListDecl(_ qualifiedTypeName: String, domains: [ErrorCode]) -> ExtensionDecl {
+    ExtensionDecl("extension \(qualifiedTypeName)") {
+        VariableDecl("""
+        public static var domains: [TCErrorType.Type] {
+            return [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
+        }
+        """)
     }
 }
