@@ -1,62 +1,54 @@
 import ArgumentParser
-import OrderedCollections
+@_implementationOnly import OrderedCollections
 
 typealias ErrorCode = String
+typealias ErrorDefinition = (code: ErrorCode, identifier: String, description: [String])
 
-enum ErrorType: String {
-    case server = "TCServerError"
-    case client = "TCClientError"
+func getErrorCodes() -> [ErrorCode] {
+    return OrderedSet(tcCommonErrors.keys).union(tcIntlCommonErrors.keys).sorted()
 }
 
-extension ErrorType: ExpressibleByArgument {
-    init?(argument: String) {
-        switch argument {
-        case "server", "Server", "TCServerError":
-            self = .server
-        case "client", "Client", "TCClientError":
-            self = .client
-        default:
-            return nil
-        }
+func getErrorDefinition(from code: ErrorCode) -> ErrorDefinition {
+    let desc = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }
+    assert(desc.isEmpty == false)
+    return (code, code.lowerFirst().replacingOccurrences(of: ".", with: "_"), desc)
+}
+
+func getErrorDefinitions(from codes: [ErrorCode]? = nil) -> [ErrorDefinition] {
+    let codes = codes ?? getErrorCodes()
+    return codes.map(getErrorDefinition)
+}
+
+func getErrorDomain(from code: ErrorCode) -> ErrorCode? {
+    let components = code.split(separator: ".")
+    guard components.count >= 2 else {
+        return nil
     }
+    precondition(components.count == 2)
+    return .init(components[0])
 }
 
-extension ErrorType: CustomStringConvertible {
-    var description: String { self.rawValue }
+func getErrorDomains(from codes: [ErrorCode]? = nil) -> [ErrorCode]  {
+    let codes = codes ?? getErrorCodes()
+    let domains = OrderedSet(codes.compactMap(getErrorDomain))
+    return domains.sorted()
 }
 
-extension ErrorType {
-    var `CommonErrors`: CommonErrors.Type {
-        switch self {
-        case .server:
-            return ServerErrors.self
-        case .client:
-            return ClientErrors.self
-        }
+func getDomainedErrorDefinition(from error: ErrorDefinition, domain: ErrorCode) -> ErrorDefinition? {
+    let components = error.code.split(separator: ".").map(String.init)
+    guard components[0] == domain else {
+        return nil
     }
+    return (error.code, components.count == 1 ? "other" : components[1].lowerFirst(), error.description)
 }
 
-func commonErrors(for type: ErrorType) -> OrderedDictionary<ErrorCode, [String]> {
-    var result: OrderedDictionary<ErrorCode, [String]> = [:]
-    let commonErrors = type.CommonErrors
-    let keys = OrderedSet(commonErrors.tcErrors.keys).union(commonErrors.tcIntlErrors.keys)
-    for key in keys.sorted() {
-        result[key] = [commonErrors.tcIntlErrors[key], commonErrors.tcErrors[key]].compactMap { $0 }
-        assert(result[key]?.isEmpty == false)
+func getDomainedErrorDefinitions(from errors: [ErrorDefinition]? = nil, domain: ErrorCode) -> [ErrorDefinition] {
+    let errors = errors ?? getErrorDefinitions()
+    var domainedErrors = errors.compactMap { getDomainedErrorDefinition(from: $0, domain: domain) }
+    // Move `.other` to the last of the list
+    if let otherIndex = domainedErrors.firstIndex(where: { $0.code == domain }) {
+        let otherError = domainedErrors.remove(at: otherIndex)
+        domainedErrors.append(otherError)
     }
-    return result
-}
-
-func errorDomains(from errors: OrderedSet<ErrorCode>) -> OrderedDictionary<ErrorCode, [ErrorCode]> {
-    var result: OrderedDictionary<ErrorCode, [ErrorCode]> = [:]
-    for code in errors {
-        let components = code.split(separator: ".").map(String.init)
-        precondition(components.count <= 2)
-        if components.count == 2 {
-            var subErrors = result[components[0]] ?? []
-            subErrors.append(components[1])
-            result[components[0]] = subErrors.sorted()
-        }
-    }
-    return result
+    return domainedErrors
 }
