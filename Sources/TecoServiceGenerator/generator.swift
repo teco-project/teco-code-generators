@@ -229,6 +229,7 @@ struct TecoServiceGenerator: ParsableCommand {
                     }
                     buildPartialEquatableDecl(errorType, key: "error")
                     buildErrorCustomStringConvertibleDecl(errorType)
+                    buildCommonErrorConversionDecl(errorType)
                 }
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
@@ -245,6 +246,7 @@ struct TecoServiceGenerator: ParsableCommand {
                     buildPartialEquatableDecl(errorType, key: "error")
                     buildErrorCustomStringConvertibleDecl(errorType)
                     buildBaseErrorConversionDecl(errorType, baseErrorShortname: baseErrorName)
+                    buildCommonErrorConversionDecl(errorType)
                 }.withCopyrightHeader(generator: Self.self)
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))

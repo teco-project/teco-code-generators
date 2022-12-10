@@ -77,6 +77,20 @@ func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorShortname: S
     }
 }
 
+func buildCommonErrorConversionDecl(_ qualifiedName: String) -> ExtensionDecl {
+    ExtensionDecl("extension \(qualifiedName)") {
+        FunctionDecl("""
+            /// - Returns: ``TCCommonError`` that holds the same error and context.
+            public func toCommonError() -> TCCommonError? {
+                if let context = self.context, let error = TCCommonError(errorCode: self.error.rawValue, context: context) {
+                    return error
+                }
+                return nil
+            }
+            """)
+    }
+}
+
 func buildErrorDomainListDecl(_ qualifiedTypeName: String, domains: [String]) -> ExtensionDecl {
     ExtensionDecl("extension \(qualifiedTypeName)") {
         VariableDecl("""
