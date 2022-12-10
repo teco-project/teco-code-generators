@@ -84,7 +84,7 @@ struct TecoPackageGenerator: ParsableCommand {
             VariableDecl("""
                 let package = Package(
                     name: "teco",
-                        platforms: [.macOS(.v11)],
+                        platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
                         products: [\(ArrayElementList {
                             for target in targets {
                                 let identifier = "Teco\(target.service)\(target.version)"
@@ -92,7 +92,7 @@ struct TecoPackageGenerator: ParsableCommand {
                             }
                         })],
                         dependencies: [
-                            .package(url: "https://github.com/teco-project/teco-core.git", .branch("main"))
+                            .package(url: "https://github.com/teco-project/teco-core.git", .upToNextMinor(from: "0.2.1"))
                         ],
                         targets: [\(ArrayElementList {
                             let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
