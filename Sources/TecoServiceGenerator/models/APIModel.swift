@@ -14,7 +14,7 @@ struct APIModel: Codable {
     struct Metadata: Codable {
         let version: String
         let brief: String?
-        let serviceName: String
+        let serviceName: String?
         let shortName: String
 
         enum CodingKeys: String, CodingKey {

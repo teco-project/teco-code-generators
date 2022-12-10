@@ -6,6 +6,9 @@ extension String {
         guard let secondWordIndex = self.firstIndex(where: \.isLowercase) else {
             return self.lowercased()
         }
+        guard self.first?.isLowercase != true else {
+            return self
+        }
         var startIndex = self.index(before: secondWordIndex)
         if startIndex != self.startIndex {
             startIndex = self.index(before: startIndex)

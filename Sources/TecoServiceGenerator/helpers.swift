@@ -59,6 +59,8 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil) ->
         assert(model.member == "float" || model.member == "double")
     case .string:
         assert(model.member == "string" || model.member.contains("date") || model.member.contains("time"))
+    case .binary:
+        assert(model.member == "binary")
     default:
         break
     }
@@ -67,7 +69,9 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil) ->
 
     if type.contains("date") || type.contains("time") {
         type = "Date"
-    } else {
+    } else if type == "binary" {
+        type = "Data"
+    } else if type.first?.isUppercase != true {
         type = type.replacingOccurrences(of: "int", with: "Int").upperFirst()
     }
 
@@ -76,9 +80,6 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil) ->
     }
 
     if !model.required || model.nullable {
-        if model.required && model.nullable, usage == .in || usage == .both {
-            assertionFailure("Required optional field is unimplemented!")
-        }
         type += "?"
     }
  
@@ -92,8 +93,19 @@ func docComment(_ document: String?) -> String {
         .joined(separator: "\n")
 }
 
-func dateFixme(_ member: APIObject.Member) -> String {
-    return getSwiftType(for: member) == "Date" ? "// FIXME: Codable support not implemented for \(member.member) yet.\n" : ""
+func codableFixme(_ member: APIObject.Member, usage: APIObject.Usage? = nil) -> String {
+    guard member.type != .binary else {
+        fatalError("Multipart APIs shouldn't be generated!")
+    }
+    
+    var result = ""
+    if getSwiftType(for: member) == "Date" {
+        result += "// FIXME: Codable support not implemented for \(member.member) yet.\n"
+    }
+    if member.required && member.nullable, usage == .in || usage == .both {
+        result += "// FIXME: Required optional field is not supported yet.\n"
+    }
+    return result
 }
 
 extension APIObject {
@@ -110,5 +122,21 @@ extension APIObject {
         case .both:
             return ["TCInputModel", "TCOutputModel"]
         }
+    }
+}
+
+let swiftKeywords: Set = ["associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "precedencegroup", "protocol", "public", "rethrows", "static", "struct", "subscript", "typealias", "var", "break", "case", "catch", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "throw", "switch", "where", "while", "Any", "as", "catch", "false", "is", "nil", "rethrows", "self", "Self", "super", "throw", "throws", "true", "try"]
+
+
+
+extension APIObject.Member {
+    var identifier: String {
+        self.name.lowerFirst().swiftIdentifier
+    }
+}
+
+extension String {
+    var swiftIdentifier: String {
+        swiftKeywords.contains(self) ? "`\(self)`" : self
     }
 }

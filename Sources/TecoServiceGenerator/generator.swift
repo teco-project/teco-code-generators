@@ -34,7 +34,7 @@ struct TecoServiceGenerator: ParsableCommand {
         do {
             let allModelNames = Set(service.objects.keys)
             assert(Set(allModelNames).count == service.objects.count)
-            
+
             // Validate request/response models.
             let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
             for modelName in requestResponseModelNames {
@@ -80,7 +80,9 @@ struct TecoServiceGenerator: ParsableCommand {
         // MARK: Generate model sources
 
         do {
-            let hasDateField = Set(models.flatMap(\.value.members).map { getSwiftType(for: $0) }).contains("Date")
+            let hasDateField = models.flatMap(\.value.members).contains { model in
+                model.member.contains("date") || model.member.contains("time")
+            }
 
             let sourceFile = SourceFile {
                 if hasDateField {
@@ -95,16 +97,16 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in metadata.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: dateFixme(member))public let \(raw: member.name.lowerFirst()): \(raw: getSwiftType(for: member, usage: metadata.usage))
+                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: metadata.usage))
                                     """)
                             }
 
                             if metadata.protocols.contains("TCInputModel") {
                                 let parameters = metadata.members.map {
-                                    "\($0.name.lowerFirst()): \(getSwiftType(for: $0, usage: .in))"
+                                    "\($0.identifier): \(getSwiftType(for: $0, usage: .in))"
                                 }
                                 InitializerDecl("public init(\(parameters.joined(separator: ", ")))") {
-                                    for member in metadata.members.map({ $0.name.lowerFirst() }) {
+                                    for member in metadata.members.map(\.identifier) {
                                         SequenceExpr("self.\(raw: member) = \(raw: member)")
                                     }
                                 }
@@ -113,7 +115,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             if !metadata.members.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
                                     for member in metadata.members {
-                                        EnumCaseDecl("case \(raw: member.name.lowerFirst()) = \(literal: member.name)")
+                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -136,7 +138,14 @@ struct TecoServiceGenerator: ParsableCommand {
                       let output = service.objects[metadata.output], output.type == .object else {
                     fatalError()
                 }
-                let hasDateField = Set((input.members + output.members).map { getSwiftType(for: $0) }).contains("Date")
+
+                // FIXME: Skip Multipart-only API for now
+                let inputMembers = input.members.filter({ $0.type != .binary })
+                guard !inputMembers.isEmpty else { continue }
+
+                let hasDateField = (input.members + output.members).contains { model in
+                    model.member.contains("date") || model.member.contains("time")
+                }
 
                 let sourceFile = SourceFile {
                     if hasDateField {
@@ -146,31 +155,32 @@ struct TecoServiceGenerator: ParsableCommand {
                     ExtensionDecl("extension \(qualifiedName)") {
                         buildActionDecl(for: action, metadata: metadata)
                         buildAsyncActionDecl(for: action, metadata: metadata)
-                        
+
                         StructDecl("""
                             \(docComment(input.document))
                             public struct \(metadata.input): TCRequestModel
                             """) {
-                            for member in input.members {
+
+                            for member in inputMembers {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: dateFixme(member))public let \(raw: member.name.lowerFirst()): \(raw: getSwiftType(for: member, usage: .in))
+                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: .in))
                                     """)
                             }
-                            
-                            let parameters = input.members.map {
-                                "\($0.name.lowerFirst()): \(getSwiftType(for: $0, usage: .in))"
+
+                            let parameters = inputMembers.map {
+                                "\($0.identifier): \(getSwiftType(for: $0, usage: .in))"
                             }
                             InitializerDecl("public init(\(parameters.joined(separator: ", ")))") {
-                                for member in input.members.map({ $0.name.lowerFirst() }) {
+                                for member in inputMembers.map(\.identifier) {
                                     SequenceExpr("self.\(raw: member) = \(raw: member)")
                                 }
                             }
 
-                            if !input.members.isEmpty {
+                            if !inputMembers.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
-                                    for member in input.members {
-                                        EnumCaseDecl("case \(raw: member.name.lowerFirst()) = \(literal: member.name)")
+                                    for member in inputMembers {
+                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -183,14 +193,14 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in output.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: dateFixme(member))public let \(raw: member.name.lowerFirst()): \(raw: getSwiftType(for: member, usage: .out))
+                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: .out))
                                     """)
                             }
 
                             if !output.members.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
                                     for member in output.members {
-                                        EnumCaseDecl("case \(raw: member.name.lowerFirst()) = \(literal: member.name)")
+                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
                                     }
                                 }
                             }

@@ -2,9 +2,9 @@ import SwiftSyntaxBuilder
 
 func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> StructDecl {
     StructDecl("""
-        /// \(model.metadata.serviceName) (\(model.metadata.shortName))
+        /// \(model.metadata.serviceName ?? "") (\(model.metadata.shortName))
         ///
-        /// \(model.metadata.brief ?? "")
+        \(docComment(model.metadata.brief))
         public struct \(model.metadata.shortName.upperFirst()): TCService
         """) {
 
@@ -56,7 +56,7 @@ func buildServicePatchSupportDecl(for qualifiedName: String) -> ExtensionDecl {
         InitializerDecl("""
             /// Initializer required by `with(region:language:timeout:byteBufferAllocator:)`. You are not able to use this initializer directly as there are no public
             /// initializers for `TCServiceConfig.Patch`. Please use ``TCService.with(region:language:timeout:byteBufferAllocator:)`` instead.
-            public init(from service: \(raw: qualifiedName), patch: TCServiceConfig.Patch) {
+            public init(from service: Self, patch: TCServiceConfig.Patch) {
                 self.client = service.client
                 self.config = service.config.with(patch: patch)
             }

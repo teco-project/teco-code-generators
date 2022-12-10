@@ -5,7 +5,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
     StructDecl("public struct \(qualifiedTypeName): TCErrorType") {
         EnumDecl("enum Code: String") {
             for (identifier, error) in errorMap {
-                EnumCaseDecl("case \(raw: identifier) = \(literal: error.code)")
+                EnumCaseDecl("case \(raw: identifier.swiftIdentifier) = \(literal: error.code)")
             }
         }
 
@@ -36,10 +36,11 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
 
         for (identifier, error) in errorMap {
             let comment = error.description ?? ""
+            let swiftIdentifier = identifier.swiftIdentifier
             VariableDecl("""
                 \(raw: comment.isEmpty ? "" : "/// \(comment)")
-                public static var \(raw: identifier): \(raw: qualifiedTypeName) {
-                    \(raw: qualifiedTypeName)(.\(raw: identifier))
+                public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
+                    \(raw: qualifiedTypeName)(.\(raw: swiftIdentifier))
                 }
                 """)
         }

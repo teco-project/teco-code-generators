@@ -49,8 +49,11 @@ struct APIObject: Codable {
         case int
         case float
         case string
+        
+        case binary
 
         case list
         case object
     }
 }
+
