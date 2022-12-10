@@ -59,8 +59,8 @@ extension SourceFile {
             throw ExitCode(100)
         }
 
-        // Work around the styling issue which caused a blank line on the top.
-        let sourceCode = String(source.description.drop(while: \.isNewline))
+        // Work around styling issues regarding blank lines.
+        let sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
 
         // Save to file.
         try sourceCode.write(to: url, atomically: true, encoding: .utf8)

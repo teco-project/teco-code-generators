@@ -57,7 +57,7 @@ struct TecoPackageGenerator: ParsableCommand {
             }
         }
 
-        targets.sort { $0.service < $1.service ? true : $0.version > $1.version }
+        targets.sort { $0.service == $1.service ? $0.version > $1.version : $0.service < $1.service }
 
         let packageSwiftFile = SourceFile {
             ImportDecl("""
