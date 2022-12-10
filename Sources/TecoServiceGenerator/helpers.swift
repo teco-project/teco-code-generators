@@ -45,7 +45,7 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
     return errorMap
 }
 
-func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil) -> String {
+func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil, isInitializer: Bool = false) -> String {
     if case .object = model.type {
         return model.member
     }
@@ -80,6 +80,11 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil) ->
     }
 
     if !model.required || model.nullable {
+        if model.required, usage == .in || usage == .both {
+            // We regard required nullable fields as **required** for input and **nullable** in output,
+            // so use non-optional for initializer.
+            return type
+        }
         type += "?"
     }
  
@@ -112,9 +117,6 @@ func codableFixme(_ member: APIObject.Member, usage: APIObject.Usage? = nil) -> 
     var result = ""
     if getSwiftType(for: member) == "Date" {
         result += "// FIXME: Codable support not implemented for \(member.member) yet.\n"
-    }
-    if member.required && member.nullable, usage == .in || usage == .both {
-        result += "// FIXME: Required optional field is not supported yet.\n"
     }
     return result
 }
