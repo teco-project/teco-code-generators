@@ -4,6 +4,8 @@ struct APIModel: Codable {
     let objects: [String : APIObject]
     let version: String
 
+    var namespace: String { metadata.shortName.upperFirst() }
+
     struct Action: Codable {
         let name: String
         let document: String

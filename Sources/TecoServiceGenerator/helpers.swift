@@ -93,6 +93,17 @@ func docComment(_ document: String?) -> String {
         .joined(separator: "\n")
 }
 
+func docComment(summary: String?, discussion: String?) -> String {
+    var document: [String] = []
+    if let summary, !summary.isEmpty {
+        document.append("/// \(summary.trimmingCharacters(in: .whitespacesAndNewlines))")
+    }
+    if case let discussion = docComment(discussion), !discussion.isEmpty {
+        document.append(discussion)
+    }
+    return OrderedSet(document).joined(separator: "\n///\n")
+}
+
 func codableFixme(_ member: APIObject.Member, usage: APIObject.Usage? = nil) -> String {
     guard member.type != .binary else {
         fatalError("Multipart APIs shouldn't be generated!")
@@ -126,8 +137,6 @@ extension APIObject {
 }
 
 let swiftKeywords: Set = ["associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "precedencegroup", "protocol", "public", "rethrows", "static", "struct", "subscript", "typealias", "var", "break", "case", "catch", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "throw", "switch", "where", "while", "Any", "as", "catch", "false", "is", "nil", "rethrows", "self", "Self", "super", "throw", "throws", "true", "try"]
-
-
 
 extension APIObject.Member {
     var identifier: String {

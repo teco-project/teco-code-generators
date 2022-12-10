@@ -18,6 +18,9 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
             """)
 
         InitializerDecl("""
+            /// Initializer used by ``TCClient`` to match an error of this type.
+            ///
+            /// You should not use this initializer directly as there are no public initializers for ``TCErrorContext``.
             public init?(errorCode: String, context: TCErrorContext) {
                 guard let error = Code(rawValue: errorCode) else {
                     return nil
@@ -35,10 +38,9 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
             """)
 
         for (identifier, error) in errorMap {
-            let comment = error.description ?? ""
             let swiftIdentifier = identifier.swiftIdentifier
             VariableDecl("""
-                \(raw: comment.isEmpty ? "" : "/// \(comment)")
+                \(raw: docComment(summary: error.description, discussion: error.solution))
                 public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: swiftIdentifier))
                 }
@@ -61,6 +63,7 @@ func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorShortname: S
     ExtensionDecl("extension \(qualifiedName)") {
         let baseErrorType = "TC\(baseErrorShortname)"
         FunctionDecl("""
+            /// - Returns: ``\(raw: baseErrorType)`` that holds the same error and context.
             public func to\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
                 guard let code = \(raw: baseErrorType).Code(rawValue: self.error.rawValue) else {
                     fatalError(\(literal: """

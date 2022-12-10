@@ -18,12 +18,12 @@ struct TecoServiceGenerator: ParsableCommand {
     func run() throws {
         let decoder = JSONDecoder()
         let service = try decoder.decode(APIModel.self, from: .init(contentsOf: source))
-        let qualifiedName = service.metadata.shortName.upperFirst()
+        let qualifiedName = service.namespace
         let errors: [APIError]
 
         if let errorFile {
             errors = try decoder.decode([APIError].self, from: .init(contentsOf: errorFile))
-                .filter { $0.productName == service.metadata.shortName && $0.productVersion == service.metadata.version }
+                .filter { $0.productShortName == service.metadata.shortName && $0.productVersion == service.metadata.version }
         } else {
             errors = []
         }
