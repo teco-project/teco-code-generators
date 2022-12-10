@@ -18,8 +18,8 @@ let package = Package(
             name: "teco-service-generator",
             targets: ["TecoServiceGenerator"]),
         .executable(
-            name: "teco-package-manifest-generator",
-            targets: ["TecoPackageManifestGenerator"]),
+            name: "teco-package-generator",
+            targets: ["TecoPackageGenerator"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -53,7 +53,7 @@ let package = Package(
                 .product(name: "OrderedCollections", package: "swift-argument-parser"),
             ]),
         .executableTarget(
-            name: "TecoPackageManifestGenerator",
+            name: "TecoPackageGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
             ]),

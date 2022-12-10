@@ -4,26 +4,61 @@ import Foundation
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoPackageManifestGenerator: ParsableCommand {
+struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var serviceManifests: URL
 
-    @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
-    var packageManifest: URL
+    @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
+    var packageDir: URL
+
+    @Option(name: .long, completion: .file(), transform: URL.init(fileURLWithPath:))
+    var serviceGenerator: URL?
 
     func run() throws {
         var targets: [(service: String, version: String)] = []
 
         let serviceDirectories = try FileManager.default.contentsOfDirectory(at: serviceManifests, includingPropertiesForKeys: nil)
+
+        if serviceGenerator != nil {
+            try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
+        }
+
         for service in serviceDirectories {
             let versionedDirectories = try FileManager.default.contentsOfDirectory(at: service, includingPropertiesForKeys: nil)
             for version in versionedDirectories {
-                guard FileManager().isReadableFile(atPath: version.appendingPathComponent("api.json").path) else {
+                let manifestJSON = version.appendingPathComponent("api.json")
+                guard FileManager().isReadableFile(atPath: manifestJSON.path) else {
                     fatalError("api.json not found in \(version.path)")
                 }
                 targets.append((service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst()))
+
+                // Experimental service generation
+                if let serviceGenerator {
+                    let sourceDirectory = packageDir
+                        .appendingPathComponent("Sources")
+                        .appendingPathComponent("Teco")
+                        .appendingPathComponent(service.lastPathComponent.upperFirst())
+                        .appendingPathComponent(version.lastPathComponent.upperFirst())
+
+                    let process = Process()
+                    process.executableURL = serviceGenerator
+                    process.arguments = [
+                        "--source=\(manifestJSON.path)",
+                        "--error-file=\(serviceManifests.deletingLastPathComponent().path)/error-codes.json",
+                        "--output-dir=\(sourceDirectory.path)",
+                    ]
+                    process.terminationHandler = { process in
+                        if process.terminationStatus != 0 {
+                            print(process.arguments ?? [], process.terminationReason)
+                        }
+                    }
+                    try process.run()
+                }
             }
         }
+
+        targets.sort { $0.service < $1.service ? true : $0.version > $1.version }
+
         let packageSwiftFile = SourceFile {
             ImportDecl("""
                 // swift-tools-version:5.5
@@ -42,7 +77,7 @@ struct TecoPackageManifestGenerator: ParsableCommand {
 
                 import PackageDescription
                 """)
- 
+
             VariableDecl("""
                 let package = Package(
                     name: "teco",
@@ -68,6 +103,6 @@ struct TecoPackageManifestGenerator: ParsableCommand {
                 """)
         }
 
-        try packageSwiftFile.save(to: packageManifest)
+        try packageSwiftFile.save(to: packageDir.appendingPathComponent("Package.swift"))
     }
 }
