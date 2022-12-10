@@ -23,6 +23,8 @@ struct TecoPackageGenerator: ParsableCommand {
             try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
         }
 
+        var generatorProcesses: [Process] = []
+
         for service in serviceDirectories {
             let versionedDirectories = try FileManager.default.contentsOfDirectory(at: service, includingPropertiesForKeys: nil)
             for version in versionedDirectories {
@@ -53,6 +55,7 @@ struct TecoPackageGenerator: ParsableCommand {
                         }
                     }
                     try process.run()
+                    generatorProcesses.append(process)
                 }
             }
         }
@@ -104,5 +107,10 @@ struct TecoPackageGenerator: ParsableCommand {
         }
 
         try packageSwiftFile.save(to: packageDir.appendingPathComponent("Package.swift"))
+
+        // Wait for service generation to complete.
+        for process in generatorProcesses {
+            process.waitUntilExit()
+        }
     }
 }

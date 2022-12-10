@@ -27,7 +27,7 @@ struct TecoServiceGenerator: ParsableCommand {
         } else {
             errors = []
         }
-        
+
         // MARK: Verify data model
         
         var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: service.objects)
@@ -140,8 +140,9 @@ struct TecoServiceGenerator: ParsableCommand {
                 }
 
                 // FIXME: Skip Multipart-only API for now
-                let inputMembers = input.members.filter({ $0.type != .binary })
-                guard !inputMembers.isEmpty else { continue }
+                if !input.members.isEmpty, input.members.allSatisfy({ $0.type == .binary }) {
+                    continue
+                }
 
                 let hasDateField = (input.members + output.members).contains { model in
                     model.member.contains("date") || model.member.contains("time")
@@ -160,6 +161,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             \(docComment(input.document))
                             public struct \(metadata.input): TCRequestModel
                             """) {
+                            let inputMembers = input.members.filter({ $0.type != .binary })
 
                             for member in inputMembers {
                                 VariableDecl("""
