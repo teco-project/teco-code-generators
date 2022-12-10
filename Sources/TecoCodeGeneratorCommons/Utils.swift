@@ -1,4 +1,5 @@
 import Foundation
+import SwiftSyntax
 
 extension String {
     public func lowerFirst() -> String {
@@ -10,6 +11,10 @@ extension String {
             startIndex = self.index(before: startIndex)
         }
         return String(self[...startIndex]).lowercased() + self[index(after: startIndex)...]
+    }
+
+    public func upperFirst() -> String {
+        return String(self[...startIndex]).uppercased() + self[index(after: startIndex)...]
     }
 }
 
@@ -35,7 +40,11 @@ extension SourceFile {
             
             
             """
-        return self.withLeadingTrivia(.lineComment(header))
+        if let leadingTrivia = self.leadingTrivia {
+            return self.withLeadingTrivia(.init(pieces: [.docBlockComment(header)] + leadingTrivia.pieces))
+        } else {
+            return self.withLeadingTrivia(.lineComment(header))
+        }
     }
 
     public func save(to url: URL) throws {

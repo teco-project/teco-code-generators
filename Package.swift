@@ -14,6 +14,9 @@ let package = Package(
         .executable(
             name: "teco-region-generator",
             targets: ["TecoRegionGenerator"]),
+        .executable(
+            name: "teco-service-generator",
+            targets: ["TecoServiceGenerator"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -36,6 +39,12 @@ let package = Package(
             ]),
         .executableTarget(
             name: "TecoRegionGenerator",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorCommons"),
+                .product(name: "OrderedCollections", package: "swift-argument-parser"),
+            ]),
+        .executableTarget(
+            name: "TecoServiceGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
                 .product(name: "OrderedCollections", package: "swift-argument-parser"),
