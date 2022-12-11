@@ -19,8 +19,6 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
 
         InitializerDecl("""
             /// Initializer used by ``TCClient`` to match an error of this type.
-            ///
-            /// You should not use this initializer directly as there are no public initializers for ``TCErrorContext``.
             public init?(errorCode: String, context: TCErrorContext) {
                 guard let error = Code(rawValue: errorCode) else {
                     return nil
@@ -62,12 +60,15 @@ func buildErrorCustomStringConvertibleDecl(_ qualifiedTypeName: String) -> Exten
 func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorShortname: String) -> ExtensionDecl {
     ExtensionDecl("extension \(qualifiedName)") {
         let baseErrorType = "TC\(baseErrorShortname)"
+        let errorCodeInterpolation = #"\(self.error.rawValue)"#
         FunctionDecl("""
-            /// - Returns: ``\(raw: baseErrorType)`` that holds the same error and context.
-            public func to\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
+            /// Get the error as ``\(raw: baseErrorType)``.
+            ///
+            /// - Returns: ``\(raw: baseErrorType)`` that holds the same error code and context.
+            public func as\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
                 guard let code = \(raw: baseErrorType).Code(rawValue: self.error.rawValue) else {
                     fatalError(\(literal: """
-                        Unexpected internal conversion error!
+                        Conversion error from \(qualifiedName) to \(baseErrorType) (code: \(errorCodeInterpolation))!
                         Please file a bug at https://github.com/teco-project/teco to help address the problem.
                         """))
                 }
@@ -80,8 +81,10 @@ func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorShortname: S
 func buildCommonErrorConversionDecl(_ qualifiedName: String) -> ExtensionDecl {
     ExtensionDecl("extension \(qualifiedName)") {
         FunctionDecl("""
-            /// - Returns: ``TCCommonError`` that holds the same error and context.
-            public func toCommonError() -> TCCommonError? {
+            /// Get the error as ``TCCommonError``.
+            ///
+            /// - Returns: ``TCCommonError`` that holds the same error code and context.
+            public func asCommonError() -> TCCommonError? {
                 if let context = self.context, let error = TCCommonError(errorCode: self.error.rawValue, context: context) {
                     return error
                 }
@@ -94,6 +97,7 @@ func buildCommonErrorConversionDecl(_ qualifiedName: String) -> ExtensionDecl {
 func buildErrorDomainListDecl(_ qualifiedTypeName: String, domains: [String]) -> ExtensionDecl {
     ExtensionDecl("extension \(qualifiedTypeName)") {
         VariableDecl("""
+        /// Error domains affliated to ``\(raw: qualifiedTypeName)``.
         public static var domains: [TCErrorType.Type] {
             return [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
         }
