@@ -3,7 +3,7 @@ import SwiftSyntaxBuilder
 func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> StructDecl {
     StructDecl("""
         \(docComment(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace,
-                     discussion: model.metadata.brief))
+                     discussion: model.metadata.document))
         public struct \(model.namespace): TCService
         """) {
 
@@ -42,8 +42,7 @@ func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasErr
                 region: region,
                 service: \(literal: serviceMetadata.shortName),
                 apiVersion: \(literal: serviceMetadata.version),
-                endpoint: endpoint,
-                \(raw: hasError ? "errorType: TC\(serviceMetadata.shortName.upperFirst())Error.self," : "")
+                endpoint: endpoint,\(raw: hasError ? "\nerrorType: TC\(serviceMetadata.shortName.upperFirst())Error.self," : "")
                 timeout: timeout,
                 byteBufferAllocator: byteBufferAllocator
             )

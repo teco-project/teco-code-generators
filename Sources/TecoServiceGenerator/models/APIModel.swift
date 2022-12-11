@@ -15,13 +15,21 @@ struct APIModel: Codable {
 
     struct Metadata: Codable {
         let version: String
-        let brief: String?
+        private let _brief: String?
         let serviceName: String?
         let shortName: String
 
+        var document: String? {
+            guard let brief = self._brief, !brief.isEmpty else { return nil }
+            for prefix in ["介绍如何使用API"] where brief.hasPrefix(prefix) {
+                return String(brief.dropFirst(prefix.count))
+            }
+            return brief
+        }
+
         enum CodingKeys: String, CodingKey {
             case version = "apiVersion"
-            case brief = "api_brief"
+            case _brief = "api_brief"
             case serviceName = "serviceNameCN"
             case shortName = "serviceShortName"
         }
