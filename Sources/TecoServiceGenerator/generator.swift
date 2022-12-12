@@ -97,7 +97,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in metadata.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: metadata.usage))
+                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
@@ -163,7 +163,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in inputMembers {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: .in))
+                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
@@ -192,7 +192,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in output.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.identifier): \(raw: getSwiftType(for: member, usage: .out))
+                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 

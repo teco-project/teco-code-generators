@@ -45,11 +45,7 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
     return errorMap
 }
 
-func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil, isInitializer: Bool = false) -> String {
-    if case .object = model.type {
-        return model.member
-    }
-
+func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> String {
     switch model.type {
     case .bool:
         assert(model.member == "bool")
@@ -61,6 +57,8 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil, is
         assert(model.member == "string" || model.member.contains("date") || model.member.contains("time"))
     case .binary:
         assert(model.member == "binary")
+    case .object:
+        assert(model.member.first?.isUppercase ?? false)
     default:
         break
     }
@@ -68,6 +66,7 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil, is
     var type = model.member
 
     if type.contains("date") || type.contains("time") {
+        assert(model.type == .string)
         type = "Date"
     } else if type == "binary" {
         type = "Data"
@@ -80,7 +79,7 @@ func getSwiftType(for model: APIObject.Member, usage: APIObject.Usage? = nil, is
     }
 
     if !model.required || model.nullable {
-        if model.required, usage == .in || usage == .both {
+        if isInitializer, model.required {
             // We regard required nullable fields as **required** for input and **nullable** in output,
             // so use non-optional for initializer.
             return type
