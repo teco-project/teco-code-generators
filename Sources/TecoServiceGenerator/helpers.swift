@@ -65,8 +65,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
 
     var type = model.member
 
-    if type.contains("date") || type.contains("time") {
-        assert(model.type == .string)
+    if model.type == .string, type.contains("date") || type.contains("time") {
         type = "Date"
     } else if type == "binary" {
         type = "Data"
@@ -86,8 +85,28 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
         }
         type += "?"
     }
- 
     return type
+}
+
+func initializerParameterList(for members: [APIObject.Member]) -> String {
+    members.map { member in
+        let type = getSwiftType(for: member, isInitializer: true)
+        var parameter = "\(member.identifier): \(type)"
+        if let defaultValue = member.default, member.required {
+            if type == "String" {
+                parameter += " = \(defaultValue.makeLiteralSyntax())"
+            } else if type == "Bool" {
+                parameter += " = \(defaultValue.lowercased())"
+            } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
+                parameter += " = \(defaultValue)"
+            } else if type == "Date" {
+                print("FIXME: Default value support for Date not implemented yet!")
+            }
+        } else if !member.required {
+            parameter += " = nil"
+        }
+        return parameter
+    }.joined(separator: ", ")
 }
 
 func docComment(_ document: String?) -> String {

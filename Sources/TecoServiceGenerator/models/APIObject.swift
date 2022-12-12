@@ -20,7 +20,7 @@ struct APIObject: Codable {
     }
 
     struct Member: Codable {
-        let `default`: String?
+        private let _default: String?
         let name: String
         private let _required: Bool?
         private let _nullable: Bool?
@@ -32,8 +32,20 @@ struct APIObject: Codable {
         var required: Bool { self._required ?? true }
         var nullable: Bool { self._nullable ?? false }
 
+        var `default`: String? {
+            switch self._default {
+            case "", "无", "NO", nil:
+                return nil
+            case #"“”"#, #""""#:
+                // There's no valid use case for these empty string values now, so return nil instead.
+                return nil
+            default:
+                return self._default
+            }
+        }
+
         enum CodingKeys: String, CodingKey {
-            case `default`
+            case _default = "default"
             case name
             case _required = "required"
             case _nullable = "value_allowed_null"
@@ -43,7 +55,7 @@ struct APIObject: Codable {
             case type
         }
     }
-    
+
     enum `Type`: String, Codable {
         case bool
         case int
@@ -56,4 +68,3 @@ struct APIObject: Codable {
         case object
     }
 }
-

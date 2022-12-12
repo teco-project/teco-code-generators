@@ -102,10 +102,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             }
 
                             if metadata.protocols.contains("TCInputModel") {
-                                let parameters = metadata.members.map {
-                                    "\($0.identifier): \(getSwiftType(for: $0, usage: .in, isInitializer: true))"
-                                }
-                                InitializerDecl("public init(\(parameters.joined(separator: ", ")))") {
+                                InitializerDecl("public init(\(initializerParameterList(for: metadata.members)))") {
                                     for member in metadata.members.map(\.identifier) {
                                         SequenceExpr("self.\(raw: member) = \(raw: member)")
                                     }
@@ -167,10 +164,7 @@ struct TecoServiceGenerator: ParsableCommand {
                                     """)
                             }
 
-                            let parameters = inputMembers.map {
-                                "\($0.identifier): \(getSwiftType(for: $0, usage: .in, isInitializer: true))"
-                            }
-                            InitializerDecl("public init(\(parameters.joined(separator: ", ")))") {
+                            InitializerDecl("public init(\(initializerParameterList(for: inputMembers)))") {
                                 for member in inputMembers.map(\.identifier) {
                                     SequenceExpr("self.\(raw: member) = \(raw: member)")
                                 }
