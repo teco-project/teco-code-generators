@@ -6,7 +6,7 @@ import TecoCodeGeneratorCommons
 @main
 struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    var serviceManifests: URL
+    var serviceManifestDir: URL
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var packageDir: URL
@@ -14,10 +14,13 @@ struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .long, completion: .file(), transform: URL.init(fileURLWithPath:))
     var serviceGenerator: URL?
 
+    @Option(name: .long)
+    var tecoCoreRequirement: String = #".branch("main")"#
+
     func run() throws {
         var targets: [(service: String, version: String)] = []
 
-        let serviceDirectories = try FileManager.default.contentsOfDirectory(at: serviceManifests, includingPropertiesForKeys: nil)
+        let serviceDirectories = try FileManager.default.contentsOfDirectory(at: serviceManifestDir, includingPropertiesForKeys: nil)
 
         if serviceGenerator != nil {
             try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
@@ -46,7 +49,7 @@ struct TecoPackageGenerator: ParsableCommand {
                     process.executableURL = serviceGenerator
                     process.arguments = [
                         "--source=\(manifestJSON.path)",
-                        "--error-file=\(serviceManifests.deletingLastPathComponent().path)/error-codes.json",
+                        "--error-file=\(serviceManifestDir.deletingLastPathComponent().path)/error-codes.json",
                         "--output-dir=\(sourceDirectory.path)",
                     ]
                     process.terminationHandler = { process in
@@ -91,9 +94,7 @@ struct TecoPackageGenerator: ParsableCommand {
                                 ArrayElement(expression: FunctionCallExpr(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"))
                             }
                         })],
-                        dependencies: [
-                            .package(url: "https://github.com/teco-project/teco-core.git", .upToNextMinor(from: "0.2.1"))
-                        ],
+                        dependencies: [.package(url: "https://github.com/teco-project/teco-core.git", \(raw: tecoCoreRequirement))],
                         targets: [\(ArrayElementList {
                             let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
                             for target in targets {
