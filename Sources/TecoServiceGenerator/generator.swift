@@ -225,14 +225,9 @@ struct TecoServiceGenerator: ParsableCommand {
             do {
                 let errorType = "TC\(baseErrorName)"
                 let sourceFile = SourceFile {
-                    buildErrorStructDecl(errorType, errorMap: generateErrorMap(from: errors))
-                    if !errorDomains.isEmpty {
-                        buildErrorDomainListDecl(errorType, domains: errorDomains)
-                    }
-                    buildPartialEquatableDecl(errorType, key: "error")
-                    buildErrorCustomStringConvertibleDecl(errorType)
-                    buildCommonErrorConversionDecl(errorType)
-                }
+                    buildServiceErrorTypeDecl(qualifiedName)
+                    buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
+                }.withCopyrightHeader(generator: Self.self)
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
             }
@@ -240,15 +235,11 @@ struct TecoServiceGenerator: ParsableCommand {
             // MARK: Generate error domain sources
             
             for domain in errorDomains {
-                let errorType = "TC\(baseErrorName).\(domain)"
+                let errorMap = generateDomainedErrorMap(from: errors, for: domain)
                 let sourceFile = SourceFile {
                     ExtensionDecl("extension TC\(baseErrorName)") {
-                        buildErrorStructDecl(domain, errorMap: generateDomainedErrorMap(from: errors, for: domain))
+                        buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
                     }
-                    buildPartialEquatableDecl(errorType, key: "error")
-                    buildErrorCustomStringConvertibleDecl(errorType)
-                    buildBaseErrorConversionDecl(errorType, baseErrorShortname: baseErrorName)
-                    buildCommonErrorConversionDecl(errorType)
                 }.withCopyrightHeader(generator: Self.self)
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))

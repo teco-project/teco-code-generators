@@ -1,14 +1,38 @@
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
-func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictionary<String, APIError>) -> StructDecl {
-    StructDecl("public struct \(qualifiedTypeName): TCErrorType") {
+func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDecl {
+    ProtocolDecl("""
+        /// Service error type returned by `\(serviceNamespace)`.
+        public protocol TC\(serviceNamespace)ErrorType: TCPlatformErrorType
+        """) {
+        let baseErrorType = "TC\(serviceNamespace)Error"
+        FunctionDecl("""
+            /// Get the service error as ``\(raw: baseErrorType)``.
+            ///
+            /// - Returns: ``\(raw: baseErrorType)`` that holds the same error code and context.
+            func \(raw: "as\(serviceNamespace)Error")() -> \(raw: baseErrorType)
+            """)
+    }
+}
+
+func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], errorMap: OrderedDictionary<String, APIError>, baseErrorShortname: String) -> StructDecl {
+    StructDecl("public struct \(qualifiedTypeName): TC\(baseErrorShortname)Type") {
         EnumDecl("enum Code: String") {
             for (identifier, error) in errorMap {
                 EnumCaseDecl("case \(raw: identifier.swiftIdentifier) = \(literal: error.code)")
             }
         }
-
+        
+        if !domains.isEmpty {
+            VariableDecl("""
+                /// Error domains affliated to ``\(raw: qualifiedTypeName)``.
+                public static var domains: [TCErrorType.Type] {
+                    [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
+                }
+                """)
+        }
+        
         VariableDecl("private let error: Code")
         VariableDecl("public let context: TCErrorContext?")
         VariableDecl("""
@@ -16,7 +40,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
                 self.error.rawValue
             }
             """)
-
+        
         InitializerDecl("""
             /// Initializer used by ``TCClient`` to match an error of this type.
             public init?(errorCode: String, context: TCErrorContext) {
@@ -27,14 +51,14 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
                 self.context = context
             }
             """)
-
+        
         InitializerDecl("""
             internal init(_ error: Code, context: TCErrorContext? = nil) {
                 self.error = error
                 self.context = context
             }
             """)
-
+        
         for (identifier, error) in errorMap {
             let swiftIdentifier = identifier.swiftIdentifier
             VariableDecl("""
@@ -44,63 +68,24 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errorMap: OrderedDictiona
                 }
                 """)
         }
-    }
-}
 
-func buildErrorCustomStringConvertibleDecl(_ qualifiedTypeName: String) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedTypeName): CustomStringConvertible") {
-        VariableDecl(#"""
-        public var description: String {
-            return "\(self.error.rawValue): \(message ?? "")"
-        }
-        """#)
-    }
-}
-
-func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorShortname: String) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedName)") {
+        // Service error protocol stub
         let baseErrorType = "TC\(baseErrorShortname)"
-        let errorCodeInterpolation = #"\(self.error.rawValue)"#
-        FunctionDecl("""
-            /// Get the error as ``\(raw: baseErrorType)``.
-            ///
-            /// - Returns: ``\(raw: baseErrorType)`` that holds the same error code and context.
-            public func as\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
-                guard let code = \(raw: baseErrorType).Code(rawValue: self.error.rawValue) else {
-                    fatalError(\(literal: """
-                        Conversion error from \(qualifiedName) to \(baseErrorType) (code: \(errorCodeInterpolation))!
-                        Please file a bug at https://github.com/teco-project/teco to help address the problem.
-                        """))
+        FunctionDecl("public func as\(baseErrorShortname)() -> \(baseErrorType)") {
+            if qualifiedTypeName == "TC\(baseErrorShortname)" {
+                ReturnStmt("return self")
+            } else {
+                VariableDecl("let code: \(raw: baseErrorType).Code")
+                SwitchStmt(expression: Expr("self.error")) {
+                    for (identifier, error) in errorMap {
+                        SwitchCase("""
+                            case .\(raw: identifier.swiftIdentifier):
+                                code = .\(raw: error.identifier)
+                            """)
+                    }
                 }
-                return \(raw: baseErrorType)(code, context: self.context)
+                ReturnStmt("return \(raw: baseErrorType)(code, context: self.context)")
             }
-            """)
-    }
-}
-
-func buildCommonErrorConversionDecl(_ qualifiedName: String) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedName)") {
-        FunctionDecl("""
-            /// Get the error as ``TCCommonError``.
-            ///
-            /// - Returns: ``TCCommonError`` that holds the same error code and context.
-            public func asCommonError() -> TCCommonError? {
-                if let context = self.context, let error = TCCommonError(errorCode: self.error.rawValue, context: context) {
-                    return error
-                }
-                return nil
-            }
-            """)
-    }
-}
-
-func buildErrorDomainListDecl(_ qualifiedTypeName: String, domains: [String]) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedTypeName)") {
-        VariableDecl("""
-        /// Error domains affliated to ``\(raw: qualifiedTypeName)``.
-        public static var domains: [TCErrorType.Type] {
-            return [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
         }
-        """)
     }
 }

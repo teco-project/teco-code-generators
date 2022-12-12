@@ -1,7 +1,10 @@
 import SwiftSyntaxBuilder
 
-func buildErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDecl {
-    StructDecl("public struct \(qualifiedTypeName): TCErrorType") {
+func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDecl {
+    StructDecl("""
+        /// Common error type returned by Tencent Cloud API.
+        public struct \(qualifiedTypeName): TCPlatformErrorType
+        """) {
         EnumDecl("enum Code: String") {
             for (code, identifier, _) in errors {
                 EnumCaseDecl("case \(raw: identifier) = \(literal: code)")
@@ -42,41 +45,5 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]
                 }
                 """)
         }
-    }
-}
-
-func buildErrorCustomStringConvertibleDecl(_ qualifiedTypeName: String) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedTypeName): CustomStringConvertible") {
-        VariableDecl(#"""
-        public var description: String {
-            return "\(self.error.rawValue): \(message ?? "")"
-        }
-        """#)
-    }
-}
-
-func buildBaseErrorConversionDecl(_ qualifiedName: String, baseErrorType: String, baseErrorShortname: String) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedName)") {
-        FunctionDecl("""
-            public func to\(raw: baseErrorShortname)() -> \(raw: baseErrorType) {
-                guard let code = \(raw: baseErrorType).Code(rawValue: self.error.rawValue) else {
-                    fatalError(\(literal: """
-                        Unexpected internal conversion error!
-                        Please file a bug at https://github.com/teco-project/teco to help address the problem.
-                        """))
-                }
-                return \(raw: baseErrorType)(code, context: self.context)
-            }
-            """)
-    }
-}
-
-func buildErrorDomainListDecl(_ qualifiedTypeName: String, domains: [ErrorCode]) -> ExtensionDecl {
-    ExtensionDecl("extension \(qualifiedTypeName)") {
-        VariableDecl("""
-        public static var domains: [TCErrorType.Type] {
-            return [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
-        }
-        """)
     }
 }
