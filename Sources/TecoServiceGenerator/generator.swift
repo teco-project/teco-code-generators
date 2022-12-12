@@ -154,9 +154,6 @@ struct TecoServiceGenerator: ParsableCommand {
                     }
 
                     ExtensionDecl("extension \(qualifiedName)") {
-                        buildActionDecl(for: action, metadata: metadata)
-                        buildAsyncActionDecl(for: action, metadata: metadata)
-
                         StructDecl("""
                             \(docComment(input.document))
                             public struct \(metadata.input): TCRequestModel
@@ -207,6 +204,9 @@ struct TecoServiceGenerator: ParsableCommand {
                                 }
                             }
                         }
+
+                        buildActionDecl(for: action, metadata: metadata)
+                        buildAsyncActionDecl(for: action, metadata: metadata)
                     }
                 }.withCopyrightHeader(generator: Self.self)
                 
