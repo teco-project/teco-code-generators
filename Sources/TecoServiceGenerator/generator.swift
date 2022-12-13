@@ -33,19 +33,19 @@ struct TecoServiceGenerator: ParsableCommand {
         var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: service.objects)
         do {
             let allModelNames = Set(service.objects.keys)
-            assert(Set(allModelNames).count == service.objects.count)
+            precondition(Set(allModelNames).count == service.objects.count)
 
             // Validate request/response models.
             let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
             for modelName in requestResponseModelNames {
-                assert(service.objects[modelName] != nil)
-                assert(service.objects[modelName]?.usage == nil)
+                precondition(service.objects[modelName] != nil)
+                precondition(service.objects[modelName]?.usage == nil)
                 models.removeValue(forKey: modelName)
             }
 
             // Validate model fragments.
             for model in models.values {
-                assert(model.usage != nil)
+                precondition(model.usage != nil)
             }
 
             // Sort models.

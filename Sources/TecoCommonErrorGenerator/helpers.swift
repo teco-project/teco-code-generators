@@ -10,7 +10,7 @@ func getErrorCodes() -> [ErrorCode] {
 
 func getErrorDefinition(from code: ErrorCode) -> ErrorDefinition {
     let desc = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }
-    assert(desc.isEmpty == false)
+    precondition(desc.isEmpty == false)
     return (code, code.lowerFirst().replacingOccurrences(of: ".", with: "_"), desc)
 }
 

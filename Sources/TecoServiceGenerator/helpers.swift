@@ -48,17 +48,17 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
 func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> String {
     switch model.type {
     case .bool:
-        assert(model.member == "bool")
+        precondition(model.member == "bool")
     case .int:
-        assert(model.member.contains("int"))
+        precondition(model.member.contains("int"))
     case .float:
-        assert(model.member == "float" || model.member == "double")
+        precondition(model.member == "float" || model.member == "double")
     case .string:
-        assert(model.member == "string" || model.member.contains("date") || model.member.contains("time"))
+        precondition(model.member == "string" || model.member.contains("date") || model.member.contains("time"))
     case .binary:
-        assert(model.member == "binary")
+        precondition(model.member == "binary")
     case .object:
-        assert(model.member.first?.isUppercase ?? false)
+        precondition(model.member.first?.isUppercase ?? false)
     default:
         break
     }
@@ -68,6 +68,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
     if model.type == .string, type.contains("date") || type.contains("time") {
         type = "Date"
     } else if type == "binary" {
+        precondition(model.type == .binary)
         type = "Data"
     } else if type.first?.isUppercase != true {
         type = type.replacingOccurrences(of: "int", with: "Int").upperFirst()
