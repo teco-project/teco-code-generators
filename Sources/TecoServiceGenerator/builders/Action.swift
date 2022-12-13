@@ -19,3 +19,23 @@ func buildAsyncActionDecl(for action: String, metadata: APIModel.Action) -> Func
         }
         """)
 }
+
+func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDecl {
+    FunctionDecl("""
+        \(raw: docComment(summary: metadata.name, discussion: metadata.document))
+        @inlinable
+        public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
+            self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), logger: logger, on: eventLoop)
+        }
+        """)
+}
+
+func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDecl {
+    FunctionDecl("""
+        \(raw: docComment(summary: metadata.name, discussion: metadata.document))
+        @inlinable
+        public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
+            try await self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), logger: logger, on: eventLoop)
+        }
+        """)
+}

@@ -89,8 +89,8 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
     return type
 }
 
-func initializerParameterList(for members: [APIObject.Member]) -> String {
-    members.map { member in
+func initializerParameterList(for members: [APIObject.Member], packed: Bool = false) -> String {
+    let params = members.map { member in
         let type = getSwiftType(for: member, isInitializer: true)
         var parameter = "\(member.identifier): \(type)"
         if let defaultValue = member.default, member.required {
@@ -107,7 +107,9 @@ func initializerParameterList(for members: [APIObject.Member]) -> String {
             parameter += " = nil"
         }
         return parameter
-    }.joined(separator: ", ")
+    }
+
+    return packed ? params.map({ $0 + ", " }).joined() : params.joined(separator: ", ")
 }
 
 func docComment(_ document: String?) -> String {
@@ -161,12 +163,16 @@ let swiftKeywords: Set = ["associatedtype", "class", "deinit", "enum", "extensio
 
 extension APIObject.Member {
     var identifier: String {
-        self.name.lowerFirst().swiftIdentifier
+        self.name.lowerFirst()
+    }
+
+    var escapedIdentifier: String {
+        self.identifier.swiftIdentifierEscaped()
     }
 }
 
 extension String {
-    var swiftIdentifier: String {
+    func swiftIdentifierEscaped() -> String {
         swiftKeywords.contains(self) ? "`\(self)`" : self
     }
 }

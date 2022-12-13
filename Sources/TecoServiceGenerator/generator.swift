@@ -97,13 +97,13 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in metadata.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
+                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
                             if metadata.protocols.contains("TCInputModel") {
                                 InitializerDecl("public init(\(initializerParameterList(for: metadata.members)))") {
-                                    for member in metadata.members.map(\.identifier) {
+                                    for member in metadata.members.map(\.escapedIdentifier) {
                                         SequenceExpr("self.\(raw: member) = \(raw: member)")
                                     }
                                 }
@@ -112,7 +112,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             if !metadata.members.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
                                     for member in metadata.members {
-                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
+                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -149,23 +149,24 @@ struct TecoServiceGenerator: ParsableCommand {
                     if hasDateField {
                         ImportDecl("@_exported import struct Foundation.Date")
                     }
+                    
+                    let inputMembers = input.members.filter({ $0.type != .binary })
 
                     ExtensionDecl("extension \(qualifiedName)") {
                         StructDecl("""
                             \(docComment(input.document))
                             public struct \(metadata.input): TCRequestModel
                             """) {
-                            let inputMembers = input.members.filter({ $0.type != .binary })
 
                             for member in inputMembers {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
+                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
                             InitializerDecl("public init(\(initializerParameterList(for: inputMembers)))") {
-                                for member in inputMembers.map(\.identifier) {
+                                for member in inputMembers.map(\.escapedIdentifier) {
                                     SequenceExpr("self.\(raw: member) = \(raw: member)")
                                 }
                             }
@@ -173,7 +174,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             if !inputMembers.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
                                     for member in inputMembers {
-                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
+                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -183,17 +184,18 @@ struct TecoServiceGenerator: ParsableCommand {
                             \(docComment(output.document))
                             public struct \(metadata.output): TCResponseModel
                             """) {
+                            
                             for member in output.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.identifier): \(raw: getSwiftType(for: member))
+                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
                             if !output.members.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
                                     for member in output.members {
-                                        EnumCaseDecl("case \(raw: member.identifier) = \(literal: member.name)")
+                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -201,6 +203,9 @@ struct TecoServiceGenerator: ParsableCommand {
 
                         buildActionDecl(for: action, metadata: metadata)
                         buildAsyncActionDecl(for: action, metadata: metadata)
+
+                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers)
+                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers)
                     }
                 }.withCopyrightHeader(generator: Self.self)
                 

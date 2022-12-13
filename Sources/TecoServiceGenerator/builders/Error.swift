@@ -20,7 +20,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
     StructDecl("public struct \(qualifiedTypeName): TC\(baseErrorShortname)Type") {
         EnumDecl("enum Code: String") {
             for (identifier, error) in errorMap {
-                EnumCaseDecl("case \(raw: identifier.swiftIdentifier) = \(literal: error.code)")
+                EnumCaseDecl("case \(raw: identifier.swiftIdentifierEscaped()) = \(literal: error.code)")
             }
         }
         
@@ -60,7 +60,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
             """)
         
         for (identifier, error) in errorMap {
-            let swiftIdentifier = identifier.swiftIdentifier
+            let swiftIdentifier = identifier.swiftIdentifierEscaped()
             VariableDecl("""
                 \(raw: docComment(summary: error.description, discussion: error.solution))
                 public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
@@ -79,7 +79,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
                 SwitchStmt(expression: Expr("self.error")) {
                     for (identifier, error) in errorMap {
                         SwitchCase("""
-                            case .\(raw: identifier.swiftIdentifier):
+                            case .\(raw: identifier.swiftIdentifierEscaped()):
                                 code = .\(raw: error.identifier)
                             """)
                     }
