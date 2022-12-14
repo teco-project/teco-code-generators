@@ -9,98 +9,58 @@ struct TecoDateWrapperGenerator: ParsableCommand {
     var outputDir: URL
 
     func run() throws {
-        let encodings: [any DateEncodingProtocol] = DateEncoding.all + OptionalDateEncoding.all
-
-        for encoding in encodings {
+        for encoding in DateEncoding.all {
             let sourceFile = SourceFile {
                 buildImportDecls(for: encoding)
 
                 StructDecl("""
                     @propertyWrapper
-                    public struct \(encoding.propertyWrapperType): Codable
+                    public struct \(encoding.rawValue)<WrappedValue: TCDateValue>: Codable
                     """) {
-                    if encoding.optional {
-                        VariableDecl("""
-                            public var wrappedValue: Date\(raw: encoding.optionalMark) {
-                                didSet {
-                                    if let wrappedValue {
-                                        self._stringValue = Self.formatter.string(from: wrappedValue)
-                                    } else {
-                                        self._stringValue = nil
-                                    }
-                                }
-                            }
-                            """)
-                    } else {
-                        VariableDecl("""
-                            public var wrappedValue: Date\(raw: encoding.optionalMark) {
-                                didSet {
-                                    self._stringValue = Self.formatter.string(from: wrappedValue)
-                                }
-                            }
-                            """)
-                    }
-                    VariableDecl("private var _stringValue: String\(raw: encoding.optionalMark)")
                     VariableDecl("""
-                        public var stringValue: String\(raw: encoding.optionalMark) {
-                            self._stringValue
+                        public var wrappedValue: WrappedValue {
+                            didSet {
+                                self._stringValue = wrappedValue.encode(formatter: Self._formatter)
+                            }
                         }
                         """)
 
+                    VariableDecl("private var _stringValue: StorageValue")
+
+                    InitializerDecl("""
+                        public init (wrappedValue: WrappedValue) {
+                            self.wrappedValue = wrappedValue
+                            self._stringValue = wrappedValue.encode(formatter: Self._formatter)
+                        }
+                        """)
+
+                    InitializerDecl("""
+                        public init (from decoder: Decoder) throws {
+                            let container = try decoder.singleValueContainer()
+                            self._stringValue = try container.decode(StorageValue.self)
+                            self.wrappedValue = try WrappedValue.decode(from: self._stringValue, formatter: Self._formatter, container: container, wrapper: Self.self)
+                        }
+                        """)
+                }
+
+                ExtensionDecl("extension \(encoding.rawValue): TCDateWrapper") {
+                    VariableDecl("""
+                        public static var _valueDescription: String {
+                            \(literal: encoding.valueDescription)
+                        }
+                        """)
 
                     buildDateFormatterDecl(for: encoding)
 
-                    if encoding.optional {
-                        InitializerDecl("""
-                            public init(wrappedValue: Date?) {
-                                self.wrappedValue = wrappedValue
-                                if let wrappedValue {
-                                    self._stringValue = Self.formatter.string(from: wrappedValue)
-                                } else {
-                                    self._stringValue = nil
-                                }
-                            }
-                            """)
-                    } else {
-                        InitializerDecl("""
-                            public init(wrappedValue: Date) {
-                                self.wrappedValue = wrappedValue
-                                self._stringValue = Self.formatter.string(from: wrappedValue)
-                            }
-                            """)
-                    }
-
-                    InitializerDecl("public init(from decoder: Decoder) throws") {
-                        if encoding.optional {
-                            GuardStmt("""
-                                guard let container = try? decoder.singleValueContainer() else {
-                                    self.wrappedValue = nil
-                                    self._stringValue = nil
-                                    return
-                                }
-                                """)
-                        } else {
-                            VariableDecl("let container = try decoder.singleValueContainer()")
-                        }
-                        VariableDecl("let stringValue = try container.decode(String.self)")
-                        GuardStmt(#"""
-                            guard let date = Self.formatter.date(from: stringValue) else {
-                                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid \#(raw: encoding.description): \(stringValue)")
-                            }
-                            """#)
-                        SequenceExpr("self._stringValue = stringValue")
-                        SequenceExpr("self.wrappedValue = date")
-                    }
-
-                    FunctionDecl("""
-                        public func encode(to encoder: Encoder) throws {
-                            try self.stringValue\(raw: encoding.optionalMark).encode(to: encoder)
+                    VariableDecl("""
+                        public var storageValue: StorageValue {
+                            self._stringValue
                         }
                         """)
                 }
             }.withCopyrightHeader(generator: Self.self)
 
-            try sourceFile.save(to: outputDir.appendingPathComponent(encoding.propertyWrapperType + ".swift"))
+            try sourceFile.save(to: outputDir.appendingPathComponent(encoding.rawValue + ".swift"))
         }
     }
 }
