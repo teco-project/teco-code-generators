@@ -20,10 +20,13 @@ let package = Package(
         .executable(
             name: "teco-package-generator",
             targets: ["TecoPackageGenerator"]),
+        .executable(
+            name: "teco-date-wrapper-generator",
+            targets: ["TecoDateWrapperGenerator"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/apple/swift-syntax.git", revision: "856b5851f056ac81ecdecd7dacef57e15cbe0bb4"),
+        .package(url: "https://github.com/apple/swift-syntax.git", revision: "eb117dccf76046499c9fd17e8fea578194b954f8"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
     ],
@@ -54,6 +57,11 @@ let package = Package(
             ]),
         .executableTarget(
             name: "TecoPackageGenerator",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorCommons"),
+            ]),
+        .executableTarget(
+            name: "TecoDateWrapperGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
             ]),
