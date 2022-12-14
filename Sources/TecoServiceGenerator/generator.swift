@@ -80,14 +80,9 @@ struct TecoServiceGenerator: ParsableCommand {
         // MARK: Generate model sources
 
         do {
-            let hasDateField = models.flatMap(\.value.members).contains { model in
-                model.member.contains("date") || model.member.contains("time")
-            }
-
             let sourceFile = SourceFile {
-                if hasDateField {
-                    ImportDecl("@_exported import struct Foundation.Date")
-                }
+                buildDateHelpersImportDecl(for: models.values)
+
                 ExtensionDecl("extension \(qualifiedName)") {
                     for (model, metadata) in models {
                         StructDecl("""
@@ -97,7 +92,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in metadata.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: metadata.usage))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
+                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
@@ -141,15 +136,9 @@ struct TecoServiceGenerator: ParsableCommand {
                     continue
                 }
 
-                let hasDateField = (input.members + output.members).contains { model in
-                    model.member.contains("date") || model.member.contains("time")
-                }
-
                 let sourceFile = SourceFile {
-                    if hasDateField {
-                        ImportDecl("@_exported import struct Foundation.Date")
-                    }
-                    
+                    buildDateHelpersImportDecl(for: [input, output])
+
                     let inputMembers = input.members.filter({ $0.type != .binary })
 
                     ExtensionDecl("extension \(qualifiedName)") {
@@ -161,7 +150,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             for member in inputMembers {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .in))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
+                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
@@ -184,11 +173,11 @@ struct TecoServiceGenerator: ParsableCommand {
                             \(docComment(output.document))
                             public struct \(metadata.output): TCResponseModel
                             """) {
-                            
+
                             for member in output.members {
                                 VariableDecl("""
                                     \(raw: docComment(member.document))
-                                    \(raw: codableFixme(member, usage: .out))public let \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
+                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 

@@ -31,6 +31,7 @@ struct APIObject: Codable {
 
         var required: Bool { self._required ?? true }
         var nullable: Bool { self._nullable ?? false }
+        var optional: Bool { !self.required || self.nullable }
 
         var `default`: String? {
             switch self._default {

@@ -54,7 +54,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
     case .float:
         precondition(model.member == "float" || model.member == "double")
     case .string:
-        precondition(model.member == "string" || model.member.contains("date") || model.member.contains("time"))
+        precondition(model.member == "string" || model.dateType != nil)
     case .binary:
         precondition(model.member == "binary")
     case .object:
@@ -65,7 +65,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
 
     var type = model.member
 
-    if model.type == .string, type.contains("date") || type.contains("time") {
+    if let _ = model.dateType {
         type = "Date"
     } else if type == "binary" {
         precondition(model.type == .binary)
@@ -78,7 +78,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
         type = "[\(type)]"
     }
 
-    if !model.required || model.nullable {
+    if model.optional {
         if isInitializer, model.required {
             // We regard required nullable fields as **required** for input and **nullable** in output,
             // so use non-optional for initializer.
@@ -130,16 +130,23 @@ func docComment(summary: String?, discussion: String?) -> String {
     return OrderedSet(document).joined(separator: "\n///\n")
 }
 
-func codableFixme(_ member: APIObject.Member, usage: APIObject.Usage? = nil) -> String {
+func publicLetWithWrapper(for member: APIObject.Member) -> String {
     guard member.type != .binary else {
         fatalError("Multipart APIs shouldn't be generated!")
     }
-    
-    var result = ""
-    if getSwiftType(for: member) == "Date" {
-        result += "// FIXME: Codable support not implemented for \(member.member) yet.\n"
+
+    if let dateType = member.dateType {
+        return """
+            ///
+            /// **Important:** This has to be a `var` due to a property wrapper restriction, which is about to be removed in the future.
+            /// For discussions, see [Allow Property Wrappers on Let Declarations](https://forums.swift.org/t/pitch-allow-property-wrappers-on-let-declarations/61750).
+            ///
+            /// Although mutating this property is possible for now, it may become a `let` variable at any time. Please don't rely on such behavior.
+            @\(dateType.propertyWrapper) public var
+            """
+    } else {
+        return "public let"
     }
-    return result
 }
 
 extension APIObject {
@@ -155,6 +162,32 @@ extension APIObject {
             return ["TCOutputModel"]
         case .both:
             return ["TCInputModel", "TCOutputModel"]
+        }
+    }
+}
+
+extension APIObject.Member {
+    var dateType: DateType? {
+        if self.type == .string, let type = DateType(rawValue: self.member) {
+            return type
+        }
+        return nil
+    }
+
+    enum DateType: String {
+        case date
+        case datetime
+        case datetime_iso
+
+        var propertyWrapper: String {
+            switch self {
+            case .date:
+                return "TCDateEncoding"
+            case .datetime:
+                return "TCTimestampEncoding"
+            case .datetime_iso:
+                return "TCTimestampISO8601Encoding"
+            }
         }
     }
 }

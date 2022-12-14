@@ -1,5 +1,13 @@
 import SwiftSyntaxBuilder
 
+@CodeBlockItemListBuilder
+func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeBlockItemList {
+    if models.flatMap(\.members).contains(where: { $0.dateType != nil }) {
+        ImportDecl("@_exported import struct Foundation.Date")
+        ImportDecl("import TecoDateHelpers")
+    }
+}
+
 func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> StructDecl {
     StructDecl("""
         \(docComment(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace,
