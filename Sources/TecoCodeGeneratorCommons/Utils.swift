@@ -60,10 +60,7 @@ extension SourceFile {
         }
 
         // Work around styling issues regarding blank lines.
-        var sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
-        
-        // Work around the generation bug regarding `try?`.
-        sourceCode = sourceCode.replacingOccurrences(of: "try ?", with: "try?")
+        let sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
 
         // Save to file.
         try sourceCode.write(to: url, atomically: true, encoding: .utf8)
