@@ -15,7 +15,7 @@ struct TecoRegionGenerator: ParsableCommand {
 
         let sourceFile = SourceFile {
             StructDecl("""
-                /// Enumeration for all Tencent Cloud service regions.
+                /// Tencent Cloud region identified by Region ID.
                 public struct \(primaryType): RawRepresentable, Equatable, Sendable, Codable
                 """) {
                 VariableDecl("public var rawValue: String")
@@ -37,9 +37,9 @@ struct TecoRegionGenerator: ParsableCommand {
                 }
 
                 FunctionDecl("""
-                    /// Other region.
-                    public static func other(_ name: String) -> \(raw: primaryType) {
-                        \(raw: primaryType)(rawValue: name)
+                    /// Constructs a ``TCRegion`` with custom Region ID.
+                    public static func other(_ id: String) -> \(raw: primaryType) {
+                        \(raw: primaryType)(rawValue: id)
                     }
                     """)
             }
@@ -58,12 +58,12 @@ struct TecoRegionGenerator: ParsableCommand {
                 """) {
                 VariableDecl("""
                     // FSI regions are isolated, which means they can only be accessed with region-specific domains.
-                    public var isolated: Bool {
+                    internal var isolated: Bool {
                         self.rawValue.hasSuffix("-fsi")
                     }
                     """)
                 FunctionDecl(#"""
-                    public func hostname(for service: String, preferringRegional: Bool = false) -> String {
+                    internal func hostname(for service: String, preferringRegional: Bool = false) -> String {
                         guard self.isolated || preferringRegional else {
                             return "tencentcloudapi.com"
                         }
