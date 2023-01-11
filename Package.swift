@@ -26,7 +26,7 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/apple/swift-syntax.git", revision: "a66416543725974e5b93b5ee472021751ffaa5b0"),
+        .package(url: "https://github.com/apple/swift-syntax.git", revision: "8936b6e55c1ffb782633042af3702cb0336b29b8"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
     ],
