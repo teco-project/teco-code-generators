@@ -28,9 +28,9 @@ struct TecoPackageGenerator: ParsableCommand {
 
         var generatorProcesses: [Process] = []
 
-        for service in serviceDirectories {
+        for service in serviceDirectories where FileManager.default.isDirectory(service) {
             let versionedDirectories = try FileManager.default.contentsOfDirectory(at: service, includingPropertiesForKeys: nil)
-            for version in versionedDirectories {
+            for version in versionedDirectories where FileManager.default.isDirectory(version) {
                 let manifestJSON = version.appendingPathComponent("api.json")
                 guard FileManager().isReadableFile(atPath: manifestJSON.path) else {
                     fatalError("api.json not found in \(version.path)")
@@ -87,22 +87,24 @@ struct TecoPackageGenerator: ParsableCommand {
             VariableDecl("""
                 let package = Package(
                     name: "teco",
-                        platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
-                        products: [\(ArrayElementList {
-                            for target in targets {
-                                let identifier = "Teco\(target.service)\(target.version)"
-                                ArrayElement(expression: FunctionCallExpr(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"))
-                            }
-                        })],
-                        dependencies: [.package(url: "https://github.com/teco-project/teco-core.git", \(raw: tecoCoreRequirement))],
-                        targets: [\(ArrayElementList {
-                            let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
-                            for target in targets {
-                                let identifier = "Teco\(target.service)\(target.version)"
-                                let path = "./Sources/Teco/\(target.service)/\(target.version)"
-                                ArrayElement(expression: FunctionCallExpr(".target(name: \(literal: identifier), dependencies: \(raw: dependency), path: \(literal: path))"))
-                            }
-                        })]
+                    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
+                    products: [\(ArrayElementList {
+                        for target in targets {
+                            let identifier = "Teco\(target.service)\(target.version)"
+                            ArrayElement(leadingTrivia: .newline, expression: FunctionCallExpr(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"), trailingComma: .comma)
+                        }
+                    }.withTrailingTrivia(.newline))],
+                    dependencies: [
+                        .package(url: "https://github.com/teco-project/teco-core.git", \(raw: tecoCoreRequirement))
+                    ],
+                    targets: [\(ArrayElementList {
+                        let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
+                        for target in targets {
+                            let identifier = "Teco\(target.service)\(target.version)"
+                            let path = "./Sources/Teco/\(target.service)/\(target.version)"
+                            ArrayElement(leadingTrivia: .newline, expression: FunctionCallExpr(".target(name: \(literal: identifier), dependencies: \(raw: dependency), path: \(literal: path))"), trailingComma: .comma)
+                        }
+                    }.withTrailingTrivia(.newline))]
                 )
                 """)
         }

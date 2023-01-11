@@ -21,6 +21,14 @@ extension String {
     }
 }
 
+extension FileManager {
+    public func isDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        let isFile = self.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        return isFile && isDirectory.boolValue
+    }
+}
+
 extension SourceFile {
     public func withCopyrightHeader(generator: ParsableCommand.Type?) -> SourceFile {
         let header = """
