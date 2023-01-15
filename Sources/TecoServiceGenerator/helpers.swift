@@ -89,6 +89,11 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
     return type
 }
 
+func skipAuthorizationParameter(for action: String) -> String {
+    // Special rule for sts:AssumeRoleWithSAML & sts:AssumeRoleWithWebIdentity
+    return action.hasPrefix("AssumeRoleWith") ? ", skipAuthorization: true" : ""
+}
+
 func initializerParameterList(for members: [APIObject.Member], packed: Bool = false) -> String {
     let params = members.map { member in
         let type = getSwiftType(for: member, isInitializer: true)
