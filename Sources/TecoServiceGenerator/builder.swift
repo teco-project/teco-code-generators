@@ -76,3 +76,18 @@ func buildServicePatchSupportDecl(for qualifiedName: String) -> ExtensionDecl {
             """)
     }
 }
+
+func buildModelInitializerDecl(with members: [APIObject.Member]) -> InitializerDecl {
+    InitializerDecl("public init(\(initializerParameterList(for: members)))") {
+        for member in members {
+            if member.dateType != nil {
+                SequenceExpr("""
+                self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
+                """)
+            } else {
+                let identifier = member.escapedIdentifier
+                SequenceExpr("self.\(raw: identifier) = \(raw: identifier)")
+            }
+        }
+    }
+}

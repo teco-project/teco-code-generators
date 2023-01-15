@@ -17,28 +17,30 @@ struct TecoDateWrapperGenerator: ParsableCommand {
                     @propertyWrapper
                     public struct \(encoding.rawValue)<WrappedValue: TCDateValue>: Codable
                     """) {
+                    VariableDecl("public var wrappedValue: WrappedValue { self._dateValue }")
+
                     VariableDecl("""
-                        public var wrappedValue: WrappedValue {
-                            didSet {
-                                self._stringValue = wrappedValue.encode(formatter: Self._formatter)
-                            }
+                        public var projectedValue: StorageValue {
+                            get { self._stringValue }
+                            set { self._stringValue = newValue }
                         }
                         """)
 
+                    VariableDecl("private var _dateValue: WrappedValue")
                     VariableDecl("private var _stringValue: StorageValue")
 
                     InitializerDecl("""
-                        public init (wrappedValue: WrappedValue) {
-                            self.wrappedValue = wrappedValue
+                        public init(wrappedValue: WrappedValue) {
+                            self._dateValue = wrappedValue
                             self._stringValue = wrappedValue.encode(formatter: Self._formatter)
                         }
                         """)
 
                     InitializerDecl("""
-                        public init (from decoder: Decoder) throws {
+                        public init(from decoder: Decoder) throws {
                             let container = try decoder.singleValueContainer()
                             self._stringValue = try container.decode(StorageValue.self)
-                            self.wrappedValue = try WrappedValue.decode(from: self._stringValue, formatter: Self._formatter, container: container, wrapper: Self.self)
+                            self._dateValue = try WrappedValue.decode(from: self._stringValue, formatter: Self._formatter, container: container, wrapper: Self.self)
                         }
                         """)
                 }
@@ -51,12 +53,6 @@ struct TecoDateWrapperGenerator: ParsableCommand {
                         """)
 
                     buildDateFormatterDecl(for: encoding)
-
-                    VariableDecl("""
-                        public var storageValue: StorageValue {
-                            self._stringValue
-                        }
-                        """)
                 }
             }.withCopyrightHeader(generator: Self.self)
 

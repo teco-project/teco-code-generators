@@ -97,11 +97,7 @@ struct TecoServiceGenerator: ParsableCommand {
                             }
 
                             if metadata.protocols.contains("TCInputModel") {
-                                InitializerDecl("public init(\(initializerParameterList(for: metadata.members)))") {
-                                    for member in metadata.members.map(\.escapedIdentifier) {
-                                        SequenceExpr("self.\(raw: member) = \(raw: member)")
-                                    }
-                                }
+                                buildModelInitializerDecl(with: metadata.members)
                             }
 
                             if !metadata.members.isEmpty {
@@ -154,11 +150,7 @@ struct TecoServiceGenerator: ParsableCommand {
                                     """)
                             }
 
-                            InitializerDecl("public init(\(initializerParameterList(for: inputMembers)))") {
-                                for member in inputMembers.map(\.escapedIdentifier) {
-                                    SequenceExpr("self.\(raw: member) = \(raw: member)")
-                                }
-                            }
+                            buildModelInitializerDecl(with: inputMembers)
 
                             if !inputMembers.isEmpty {
                                 EnumDecl("enum CodingKeys: String, CodingKey") {
