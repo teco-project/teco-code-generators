@@ -1,4 +1,5 @@
 import ArgumentParser
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import Foundation
 import TecoCodeGeneratorCommons
@@ -10,33 +11,33 @@ struct TecoDateWrapperGenerator: ParsableCommand {
 
     func run() throws {
         for encoding in DateEncoding.all {
-            let sourceFile = SourceFile {
+            let sourceFile = SourceFileSyntax {
                 buildImportDecls(for: encoding)
 
-                StructDecl("""
+                StructDeclSyntax("""
                     @propertyWrapper
                     public struct \(encoding.rawValue)<WrappedValue: TCDateValue>: Codable
                     """) {
-                    VariableDecl("public var wrappedValue: WrappedValue { self._dateValue }")
+                    VariableDeclSyntax("public var wrappedValue: WrappedValue { self._dateValue }")
 
-                    VariableDecl("""
+                    VariableDeclSyntax("""
                         public var projectedValue: StorageValue {
                             get { self._stringValue }
                             set { self._stringValue = newValue }
                         }
                         """)
 
-                    VariableDecl("private var _dateValue: WrappedValue")
-                    VariableDecl("private var _stringValue: StorageValue")
+                    VariableDeclSyntax("private var _dateValue: WrappedValue")
+                    VariableDeclSyntax("private var _stringValue: StorageValue")
 
-                    InitializerDecl("""
+                    InitializerDeclSyntax("""
                         public init(wrappedValue: WrappedValue) {
                             self._dateValue = wrappedValue
                             self._stringValue = wrappedValue.encode(formatter: Self._formatter)
                         }
                         """)
 
-                    InitializerDecl("""
+                    InitializerDeclSyntax("""
                         public init(from decoder: Decoder) throws {
                             let container = try decoder.singleValueContainer()
                             self._stringValue = try container.decode(StorageValue.self)
@@ -45,8 +46,8 @@ struct TecoDateWrapperGenerator: ParsableCommand {
                         """)
                 }
 
-                ExtensionDecl("extension \(encoding.rawValue): TCDateWrapper") {
-                    VariableDecl("""
+                ExtensionDeclSyntax("extension \(encoding.rawValue): TCDateWrapper") {
+                    VariableDeclSyntax("""
                         public static var _valueDescription: String {
                             \(literal: encoding.valueDescription)
                         }

@@ -1,25 +1,26 @@
+import SwiftSyntax
 import SwiftSyntaxBuilder
 
-func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDecl {
-    StructDecl("""
+func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDeclSyntax {
+    StructDeclSyntax("""
         /// Common error type returned by Tencent Cloud API.
         public struct \(qualifiedTypeName): TCPlatformErrorType
         """) {
-        EnumDecl("enum Code: String") {
+        EnumDeclSyntax("enum Code: String") {
             for (code, identifier, _) in errors {
-                EnumCaseDecl("case \(raw: identifier) = \(literal: code)")
+                EnumCaseDeclSyntax("case \(raw: identifier) = \(literal: code)")
             }
         }
 
-        VariableDecl("private let error: Code")
-        VariableDecl("public let context: TCErrorContext?")
-        VariableDecl("""
+        VariableDeclSyntax("private let error: Code")
+        VariableDeclSyntax("public let context: TCErrorContext?")
+        VariableDeclSyntax("""
             public var errorCode: String {
                 self.error.rawValue
             }
             """)
 
-        InitializerDecl("""
+        InitializerDeclSyntax("""
             public init?(errorCode: String, context: TCErrorContext) {
                 guard let error = Code(rawValue: errorCode) else {
                     return nil
@@ -29,7 +30,7 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
             }
             """)
 
-        InitializerDecl("""
+        InitializerDeclSyntax("""
             internal init(_ error: Code, context: TCErrorContext? = nil) {
                 self.error = error
                 self.context = context
@@ -38,7 +39,7 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
 
         for (_, identifier, description) in errors {
             let comment = description.joined(separator: " / ")
-            VariableDecl("""
+            VariableDeclSyntax("""
                 \(raw: comment.isEmpty ? "" : "/// \(comment)")
                 public static var \(raw: identifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: identifier))

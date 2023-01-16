@@ -1,5 +1,6 @@
 import ArgumentParser
 @_implementationOnly import OrderedCollections
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import Foundation
 import TecoCodeGeneratorCommons
@@ -68,8 +69,8 @@ struct TecoServiceGenerator: ParsableCommand {
         // MARK: Generate client source
 
         do {
-            let sourceFile = SourceFile {
-                ImportDecl("@_exported import TecoCore")
+            let sourceFile = SourceFileSyntax {
+                ImportDeclSyntax("@_exported import TecoCore")
                 buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                 buildServicePatchSupportDecl(for: qualifiedName)
             }.withCopyrightHeader(generator: Self.self)
@@ -80,30 +81,30 @@ struct TecoServiceGenerator: ParsableCommand {
         // MARK: Generate model sources
 
         do {
-            let sourceFile = SourceFile {
+            let sourceFile = SourceFileSyntax {
                 buildDateHelpersImportDecl(for: models.values)
 
-                ExtensionDecl("extension \(qualifiedName)") {
+                ExtensionDeclSyntax("extension \(qualifiedName)") {
                     for (model, metadata) in models {
-                        StructDecl("""
+                        StructDeclSyntax("""
                                 \(docComment(metadata.document))
                                 public struct \(model): \(metadata.protocols.joined(separator: ", "))
                                 """) {
                             for member in metadata.members {
-                                VariableDecl("""
+                                VariableDeclSyntax("""
                                     \(raw: docComment(member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
                             if metadata.protocols.contains("TCInputModel") {
-                                buildModelInitializerDecl(with: metadata.members)
+                                buildModelInitializerDeclSyntax(with: metadata.members)
                             }
 
                             if !metadata.members.isEmpty {
-                                EnumDecl("enum CodingKeys: String, CodingKey") {
+                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
                                     for member in metadata.members {
-                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
+                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -132,51 +133,51 @@ struct TecoServiceGenerator: ParsableCommand {
                     continue
                 }
 
-                let sourceFile = SourceFile {
+                let sourceFile = SourceFileSyntax {
                     buildDateHelpersImportDecl(for: [input, output])
 
                     let inputMembers = input.members.filter({ $0.type != .binary })
 
-                    ExtensionDecl("extension \(qualifiedName)") {
-                        StructDecl("""
+                    ExtensionDeclSyntax("extension \(qualifiedName)") {
+                        StructDeclSyntax("""
                             \(docComment(input.document))
                             public struct \(metadata.input): TCRequestModel
                             """) {
 
                             for member in inputMembers {
-                                VariableDecl("""
+                                VariableDeclSyntax("""
                                     \(raw: docComment(member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
-                            buildModelInitializerDecl(with: inputMembers)
+                            buildModelInitializerDeclSyntax(with: inputMembers)
 
                             if !inputMembers.isEmpty {
-                                EnumDecl("enum CodingKeys: String, CodingKey") {
+                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
                                     for member in inputMembers {
-                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
+                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
                         }
 
-                        StructDecl("""
+                        StructDeclSyntax("""
                             \(docComment(output.document))
                             public struct \(metadata.output): TCResponseModel
                             """) {
 
                             for member in output.members {
-                                VariableDecl("""
+                                VariableDeclSyntax("""
                                     \(raw: docComment(member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
 
                             if !output.members.isEmpty {
-                                EnumDecl("enum CodingKeys: String, CodingKey") {
+                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
                                     for member in output.members {
-                                        EnumCaseDecl("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
+                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
                                     }
                                 }
                             }
@@ -204,7 +205,7 @@ struct TecoServiceGenerator: ParsableCommand {
             let errorDomains = getErrorDomains(from: errors)
             do {
                 let errorType = "TC\(baseErrorName)"
-                let sourceFile = SourceFile {
+                let sourceFile = SourceFileSyntax {
                     buildServiceErrorTypeDecl(qualifiedName)
                     buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
                 }.withCopyrightHeader(generator: Self.self)
@@ -216,8 +217,8 @@ struct TecoServiceGenerator: ParsableCommand {
             
             for domain in errorDomains {
                 let errorMap = generateDomainedErrorMap(from: errors, for: domain)
-                let sourceFile = SourceFile {
-                    ExtensionDecl("extension TC\(baseErrorName)") {
+                let sourceFile = SourceFileSyntax {
+                    ExtensionDeclSyntax("extension TC\(baseErrorName)") {
                         buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
                     }
                 }.withCopyrightHeader(generator: Self.self)

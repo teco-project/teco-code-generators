@@ -1,13 +1,14 @@
+import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
-func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDecl {
-    ProtocolDecl("""
+func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDeclSyntax {
+    ProtocolDeclSyntax("""
         /// Service error type returned by `\(serviceNamespace)`.
         public protocol TC\(serviceNamespace)ErrorType: TCPlatformErrorType
         """) {
         let baseErrorType = "TC\(serviceNamespace)Error"
-        FunctionDecl("""
+        FunctionDeclSyntax("""
             /// Get the service error as ``\(raw: baseErrorType)``.
             ///
             /// - Returns: ``\(raw: baseErrorType)`` that holds the same error code and context.
@@ -16,16 +17,16 @@ func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDecl {
     }
 }
 
-func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], errorMap: OrderedDictionary<String, APIError>, baseErrorShortname: String) -> StructDecl {
-    StructDecl("public struct \(qualifiedTypeName): TC\(baseErrorShortname)Type") {
-        EnumDecl("enum Code: String") {
+func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], errorMap: OrderedDictionary<String, APIError>, baseErrorShortname: String) -> StructDeclSyntax {
+    StructDeclSyntax("public struct \(qualifiedTypeName): TC\(baseErrorShortname)Type") {
+        EnumDeclSyntax("enum Code: String") {
             for (identifier, error) in errorMap {
-                EnumCaseDecl("case \(raw: identifier.swiftIdentifierEscaped()) = \(literal: error.code)")
+                EnumCaseDeclSyntax("case \(raw: identifier.swiftIdentifierEscaped()) = \(literal: error.code)")
             }
         }
         
         if !domains.isEmpty {
-            VariableDecl("""
+            VariableDeclSyntax("""
                 /// Error domains affliated to ``\(raw: qualifiedTypeName)``.
                 public static var domains: [TCErrorType.Type] {
                     [\(raw: domains.map { "\($0).self" }.joined(separator: ", "))]
@@ -33,15 +34,15 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
                 """)
         }
         
-        VariableDecl("private let error: Code")
-        VariableDecl("public let context: TCErrorContext?")
-        VariableDecl("""
+        VariableDeclSyntax("private let error: Code")
+        VariableDeclSyntax("public let context: TCErrorContext?")
+        VariableDeclSyntax("""
             public var errorCode: String {
                 self.error.rawValue
             }
             """)
         
-        InitializerDecl("""
+        InitializerDeclSyntax("""
             /// Initializer used by ``TCClient`` to match an error of this type.
             public init?(errorCode: String, context: TCErrorContext) {
                 guard let error = Code(rawValue: errorCode) else {
@@ -52,7 +53,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
             }
             """)
         
-        InitializerDecl("""
+        InitializerDeclSyntax("""
             internal init(_ error: Code, context: TCErrorContext? = nil) {
                 self.error = error
                 self.context = context
@@ -61,7 +62,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
         
         for (identifier, error) in errorMap {
             let swiftIdentifier = identifier.swiftIdentifierEscaped()
-            VariableDecl("""
+            VariableDeclSyntax("""
                 \(raw: docComment(summary: error.description, discussion: error.solution))
                 public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: swiftIdentifier))
@@ -71,20 +72,20 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
 
         // Service error protocol stub
         let baseErrorType = "TC\(baseErrorShortname)"
-        FunctionDecl("public func as\(baseErrorShortname)() -> \(baseErrorType)") {
+        FunctionDeclSyntax("public func as\(baseErrorShortname)() -> \(baseErrorType)") {
             if qualifiedTypeName == "TC\(baseErrorShortname)" {
-                ReturnStmt("return self")
+                ReturnStmtSyntax("return self")
             } else {
-                VariableDecl("let code: \(raw: baseErrorType).Code")
-                SwitchStmt(expression: Expr("self.error")) {
+                VariableDeclSyntax("let code: \(raw: baseErrorType).Code")
+                SwitchStmtSyntax(expression: ExprSyntax("self.error")) {
                     for (identifier, error) in errorMap {
-                        SwitchCase("""
+                        SwitchCaseSyntax("""
                             case .\(raw: identifier.swiftIdentifierEscaped()):
                                 code = .\(raw: error.identifier)
                             """)
                     }
                 }
-                ReturnStmt("return \(raw: baseErrorType)(code, context: self.context)")
+                ReturnStmtSyntax("return \(raw: baseErrorType)(code, context: self.context)")
             }
         }
     }

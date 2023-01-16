@@ -1,4 +1,5 @@
 import Foundation
+import SwiftSyntax
 import TecoCodeGeneratorCommons
 
 @main
@@ -13,13 +14,13 @@ struct TecoRegionGenerator: ParsableCommand {
         
         let primaryType = "TCRegion"
 
-        let sourceFile = SourceFile {
-            StructDecl("""
+        let sourceFile = SourceFileSyntax {
+            StructDeclSyntax("""
                 /// Tencent Cloud region identified by Region ID.
                 public struct \(primaryType): RawRepresentable, Equatable, Sendable, Codable
                 """) {
-                VariableDecl("public var rawValue: String")
-                InitializerDecl("""
+                VariableDeclSyntax("public var rawValue: String")
+                InitializerDeclSyntax("""
                     public init(rawValue: String) {
                         self.rawValue = rawValue
                     }
@@ -28,7 +29,7 @@ struct TecoRegionGenerator: ParsableCommand {
                 for (region, names) in regions {
                     let identifier = region.replacingOccurrences(of: "-", with: "_")
                     let description = Array(names).joined(separator: " / ")
-                    VariableDecl("""
+                    VariableDeclSyntax("""
                         /// \(raw: description)
                         public static var \(raw: identifier): \(raw: primaryType) {
                             \(raw: primaryType)(rawValue: \(literal: region))
@@ -36,7 +37,7 @@ struct TecoRegionGenerator: ParsableCommand {
                         """)
                 }
 
-                FunctionDecl("""
+                FunctionDeclSyntax("""
                     /// Constructs a ``TCRegion`` with custom Region ID.
                     public static func other(_ id: String) -> \(raw: primaryType) {
                         \(raw: primaryType)(rawValue: id)
@@ -44,25 +45,25 @@ struct TecoRegionGenerator: ParsableCommand {
                     """)
             }
 
-            ExtensionDecl("extension \(primaryType): CustomStringConvertible") {
-                VariableDecl("""
+            ExtensionDeclSyntax("extension \(primaryType): CustomStringConvertible") {
+                VariableDeclSyntax("""
                     public var description: String {
                         return self.rawValue
                     }
                     """)
             }
 
-            ExtensionDecl("""
+            ExtensionDeclSyntax("""
                 // Isolation and domain helpers.
                 extension \(primaryType)
                 """) {
-                VariableDecl("""
+                VariableDeclSyntax("""
                     // FSI regions are isolated, which means they can only be accessed with region-specific domains.
                     internal var isolated: Bool {
                         self.rawValue.hasSuffix("-fsi")
                     }
                     """)
-                FunctionDecl(#"""
+                FunctionDeclSyntax(#"""
                     internal func hostname(for service: String, preferringRegional: Bool = false) -> String {
                         guard self.isolated || preferringRegional else {
                             return "tencentcloudapi.com"

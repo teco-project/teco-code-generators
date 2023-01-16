@@ -1,4 +1,5 @@
 import ArgumentParser
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import Foundation
 import TecoCodeGeneratorCommons
@@ -12,7 +13,7 @@ struct TecoCommonErrorGenerator: ParsableCommand {
         let codes = getErrorCodes()
         let errors = getErrorDefinitions(from: codes)
 
-        let sourceFile = SourceFile {
+        let sourceFile = SourceFileSyntax {
             buildCommonErrorStructDecl("TCCommonError", errors: errors)
         }.withCopyrightHeader(generator: Self.self)
 

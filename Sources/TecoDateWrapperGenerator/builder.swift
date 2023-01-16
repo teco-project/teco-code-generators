@@ -1,6 +1,7 @@
+import SwiftSyntax
 import SwiftSyntaxBuilder
 
-func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDecl {
+func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDeclSyntax {
     let dateFormat: String
     switch encoding {
     case .date:
@@ -8,13 +9,13 @@ func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDecl {
     case .timestamp:
         dateFormat = "yyyy-MM-dd HH:mm:ss"
     case .timestamp_iso8601:
-        return VariableDecl("""
+        return VariableDeclSyntax("""
             public static var _formatter: ISO8601DateFormatter {
                 ISO8601DateFormatter()
             }
             """)
     }
-    return VariableDecl("""
+    return VariableDeclSyntax("""
         public static var _formatter: DateFormatter {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -25,19 +26,19 @@ func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDecl {
         """)
 }
 
-func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemList {
+func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
     switch encoding {
     case .date, .timestamp:
-        return CodeBlockItemList {
-            ImportDecl("import struct Foundation.Date")
-            ImportDecl("import struct Foundation.Locale")
-            ImportDecl("import struct Foundation.TimeZone")
-            ImportDecl("import class Foundation.DateFormatter")
+        return CodeBlockItemListSyntax {
+            ImportDeclSyntax("import struct Foundation.Date")
+            ImportDeclSyntax("import struct Foundation.Locale")
+            ImportDeclSyntax("import struct Foundation.TimeZone")
+            ImportDeclSyntax("import class Foundation.DateFormatter")
         }
     case .timestamp_iso8601:
-        return CodeBlockItemList {
-            ImportDecl("import struct Foundation.Date")
-            ImportDecl("import class Foundation.ISO8601DateFormatter")
+        return CodeBlockItemListSyntax {
+            ImportDeclSyntax("import struct Foundation.Date")
+            ImportDeclSyntax("import class Foundation.ISO8601DateFormatter")
         }
     }
 }

@@ -29,8 +29,8 @@ extension FileManager {
     }
 }
 
-extension SourceFile {
-    public func withCopyrightHeader(generator: ParsableCommand.Type?) -> SourceFile {
+extension SourceFileSyntax {
+    public func withCopyrightHeader(generator: ParsableCommand.Type?) -> SourceFileSyntax {
         let header = """
             //===----------------------------------------------------------------------===//
             //
@@ -62,7 +62,7 @@ extension SourceFile {
         let source = self.formatted(using: CodeGenerationFormat())
 
         // Validate the generated code.
-        guard SourceFile(source)?.hasError == false else {
+        guard SourceFileSyntax(source)?.hasError == false else {
             print("Syntax tree validation error!")
             throw ExitCode(100)
         }

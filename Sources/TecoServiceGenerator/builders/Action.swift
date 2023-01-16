@@ -1,7 +1,8 @@
+import SwiftSyntax
 import SwiftSyntaxBuilder
 
-func buildActionDecl(for action: String, metadata: APIModel.Action) -> FunctionDecl {
-    FunctionDecl("""
+func buildActionDecl(for action: String, metadata: APIModel.Action) -> FunctionDeclSyntax {
+    FunctionDeclSyntax("""
         \(raw: docComment(summary: metadata.name, discussion: metadata.document))
         @inlinable
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
@@ -10,8 +11,8 @@ func buildActionDecl(for action: String, metadata: APIModel.Action) -> FunctionD
         """)
 }
 
-func buildAsyncActionDecl(for action: String, metadata: APIModel.Action) -> FunctionDecl {
-    FunctionDecl("""
+func buildAsyncActionDecl(for action: String, metadata: APIModel.Action) -> FunctionDeclSyntax {
+    FunctionDeclSyntax("""
         \(raw: docComment(summary: metadata.name, discussion: metadata.document))
         @inlinable
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
@@ -20,8 +21,8 @@ func buildAsyncActionDecl(for action: String, metadata: APIModel.Action) -> Func
         """)
 }
 
-func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDecl {
-    FunctionDecl("""
+func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDeclSyntax {
+    FunctionDeclSyntax("""
         \(raw: docComment(summary: metadata.name, discussion: metadata.document))
         @inlinable
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
@@ -30,8 +31,8 @@ func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inpu
         """)
 }
 
-func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDecl {
-    FunctionDecl("""
+func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member]) -> FunctionDeclSyntax {
+    FunctionDeclSyntax("""
         \(raw: docComment(summary: metadata.name, discussion: metadata.document))
         @inlinable
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {

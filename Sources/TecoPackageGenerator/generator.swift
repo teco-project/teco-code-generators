@@ -1,4 +1,5 @@
 import ArgumentParser
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import Foundation
 import TecoCodeGeneratorCommons
@@ -65,8 +66,8 @@ struct TecoPackageGenerator: ParsableCommand {
 
         targets.sort { $0.service == $1.service ? $0.version > $1.version : $0.service < $1.service }
 
-        let packageSwiftFile = SourceFile {
-            ImportDecl("""
+        let packageSwiftFile = SourceFileSyntax {
+            ImportDeclSyntax("""
                 // swift-tools-version:5.5
                 //===----------------------------------------------------------------------===//
                 //
@@ -84,25 +85,25 @@ struct TecoPackageGenerator: ParsableCommand {
                 import PackageDescription
                 """)
 
-            VariableDecl("""
+            VariableDeclSyntax("""
                 let package = Package(
                     name: "teco",
                     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
-                    products: [\(ArrayElementList {
+                    products: [\(ArrayElementListSyntax {
                         for target in targets {
                             let identifier = "Teco\(target.service)\(target.version)"
-                            ArrayElement(leadingTrivia: .newline, expression: FunctionCallExpr(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"), trailingComma: .comma)
+                            ArrayElementSyntax(leadingTrivia: .newline, expression: FunctionCallExprSyntax(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"), trailingComma: .commaToken())
                         }
                     }.withTrailingTrivia(.newline))],
                     dependencies: [
                         .package(url: "https://github.com/teco-project/teco-core.git", \(raw: tecoCoreRequirement))
                     ],
-                    targets: [\(ArrayElementList {
+                    targets: [\(ArrayElementListSyntax {
                         let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
                         for target in targets {
                             let identifier = "Teco\(target.service)\(target.version)"
                             let path = "./Sources/Teco/\(target.service)/\(target.version)"
-                            ArrayElement(leadingTrivia: .newline, expression: FunctionCallExpr(".target(name: \(literal: identifier), dependencies: \(raw: dependency), path: \(literal: path))"), trailingComma: .comma)
+                            ArrayElementSyntax(leadingTrivia: .newline, expression: FunctionCallExprSyntax(".target(name: \(literal: identifier), dependencies: \(raw: dependency), path: \(literal: path))"), trailingComma: .commaToken())
                         }
                     }.withTrailingTrivia(.newline))]
                 )
