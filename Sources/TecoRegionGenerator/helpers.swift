@@ -17,10 +17,7 @@ extension RegionId {
         if self.hasSuffix("-fsi") {
             return "financial"
         }
-        if self.hasSuffix("-adc") {
-            return "autoDriving"
-        }
-        if self.hasSuffix("-xinan") || self.hasSuffix("-sycft") {
+        if self.hasSuffix("-adc") || self.hasSuffix("-sycft") || self.hasSuffix("-xinan") {
             return "internal"
         }
         return nil

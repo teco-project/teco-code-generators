@@ -11,8 +11,6 @@ struct TecoRegionGenerator: ParsableCommand {
         let tcRegionMap = getRegionMap(from: tcRegions)
         let tcIntlRegionMap = getRegionMap(from: tcIntlRegions)
         let regions = getRegionDescriptionMaps(from: tcRegionMap, tcIntlRegionMap)
-        
-        let primaryType = "TCRegion"
 
         let sourceFile = SourceFileSyntax {
             StructDeclSyntax("""
@@ -30,8 +28,6 @@ struct TecoRegionGenerator: ParsableCommand {
                         case global
                         /// Financial service regions that are isolated, yet accessible within each other.
                         case financial
-                        /// Financial service regions that are fully isolated.
-                        case autoDriving
                         /// Special service regions that are assumed to be fully isolated.
                         case `internal`
                     }
@@ -72,9 +68,7 @@ struct TecoRegionGenerator: ParsableCommand {
 
             ExtensionDeclSyntax("""
                 extension TCRegion: CustomStringConvertible {
-                    public var description: String {
-                        return self.rawValue
-                    }
+                    public var description: String { self.rawValue }
                 }
                 """)
 
@@ -82,13 +76,7 @@ struct TecoRegionGenerator: ParsableCommand {
                 extension TCRegion {
                     /// Whether a region is accessible from another.
                     public func isAccessible(from region: TCRegion) -> Bool {
-                        if self == region {
-                            return true
-                        }
-                        guard self.kind == region.kind else {
-                            return false
-                        }
-                        return self.kind == .global || self.kind == .financial
+                        self == region || (self.kind == region.kind && self.kind != .internal)
                     }
                 }
                 """)
