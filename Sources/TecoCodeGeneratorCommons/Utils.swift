@@ -30,13 +30,13 @@ extension FileManager {
 }
 
 extension SourceFileSyntax {
-    public func withCopyrightHeader(generator: ParsableCommand.Type?) -> SourceFileSyntax {
+    public func withCopyrightHeader(generator: ParsableCommand.Type?, year: String = "2022-2023") -> SourceFileSyntax {
         let header = """
             //===----------------------------------------------------------------------===//
             //
             // This source file is part of the Teco open source project.
             //
-            // Copyright (c) 2022 the Teco project authors
+            // Copyright (c) \(year) the Teco project authors
             // Licensed under Apache License v2.0
             //
             // See LICENSE.txt for license information

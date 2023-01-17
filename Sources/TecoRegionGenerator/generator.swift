@@ -17,12 +17,31 @@ struct TecoRegionGenerator: ParsableCommand {
         let sourceFile = SourceFileSyntax {
             StructDeclSyntax("""
                 /// Tencent Cloud region identified by Region ID.
-                public struct \(primaryType): RawRepresentable, Equatable, Sendable, Codable
+                public struct TCRegion: Equatable, Sendable
                 """) {
-                VariableDeclSyntax("public var rawValue: String")
+                VariableDeclSyntax("""
+                    /// Raw region ID.
+                    public var rawValue: String
+                    """)
+
+                EnumDeclSyntax("""
+                    public enum Kind: Equatable, Sendable {
+                        /// Global service regions that are open and accessible within each other.
+                        case global
+                        /// Financial service regions that are isolated, yet accessible within each other.
+                        case financial
+                        /// Financial service regions that are fully isolated.
+                        case autoDriving
+                        /// Special service regions that are assumed to be fully isolated.
+                        case `internal`
+                    }
+                    """)
+                VariableDeclSyntax("public var kind: Kind")
+
                 InitializerDeclSyntax("""
-                    public init(rawValue: String) {
-                        self.rawValue = rawValue
+                    public init(id: String, kind: Kind = .global) {
+                        self.rawValue = id
+                        self.kind = kind
                     }
                     """)
 
@@ -31,47 +50,48 @@ struct TecoRegionGenerator: ParsableCommand {
                     let description = Array(names).joined(separator: " / ")
                     VariableDeclSyntax("""
                         /// \(raw: description)
-                        public static var \(raw: identifier): \(raw: primaryType) {
-                            \(raw: primaryType)(rawValue: \(literal: region))
+                        public static var \(raw: identifier): TCRegion {
+                            \(buildRegionExpr(for: region))
                         }
                         """)
                 }
 
                 FunctionDeclSyntax("""
                     /// Constructs a ``TCRegion`` with custom Region ID.
-                    public static func other(_ id: String) -> \(raw: primaryType) {
-                        \(raw: primaryType)(rawValue: id)
+                    public static func other(_ id: String, kind: Kind = .internal) -> TCRegion {
+                        TCRegion(id: id, kind: kind)
                     }
                     """)
-            }
 
-            ExtensionDeclSyntax("extension \(primaryType): CustomStringConvertible") {
-                VariableDeclSyntax("""
-                    public var description: String {
-                        return self.rawValue
+                FunctionDeclSyntax("""
+                    public static func == (lhs: TCRegion, rhs: TCRegion) -> Bool {
+                        lhs.rawValue == rhs.rawValue
                     }
                     """)
             }
 
             ExtensionDeclSyntax("""
-                // Isolation and domain helpers.
-                extension \(primaryType)
-                """) {
-                VariableDeclSyntax("""
-                    // FSI regions are isolated, which means they can only be accessed with region-specific domains.
-                    internal var isolated: Bool {
-                        self.rawValue.hasSuffix("-fsi")
+                extension TCRegion: CustomStringConvertible {
+                    public var description: String {
+                        return self.rawValue
                     }
-                    """)
-                FunctionDeclSyntax(#"""
-                    internal func hostname(for service: String, preferringRegional: Bool = false) -> String {
-                        guard self.isolated || preferringRegional else {
-                            return "tencentcloudapi.com"
+                }
+                """)
+
+            ExtensionDeclSyntax("""
+                extension TCRegion {
+                    /// Whether a region is accessible from another.
+                    public func isAccessible(from region: TCRegion) -> Bool {
+                        if self == region {
+                            return true
                         }
-                        return "\(self.rawValue).tencentcloudapi.com"
+                        guard self.kind == region.kind else {
+                            return false
+                        }
+                        return self.kind == .global || self.kind == .financial
                     }
-                    """#)
-            }
+                }
+                """)
         }.withCopyrightHeader(generator: Self.self)
 
         try sourceFile.save(to: self.output)

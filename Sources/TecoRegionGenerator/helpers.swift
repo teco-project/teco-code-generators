@@ -11,3 +11,18 @@ func getRegionDescriptionMaps(from maps: OrderedDictionary<RegionId, String>...)
     let regionIds = maps.map(\.keys).reduce(OrderedSet(), { $0.union($1) })
     return regionIds.map { id in (id, OrderedSet(maps.compactMap({ $0[id] }))) }
 }
+
+extension RegionId {
+    var kind: String? {
+        if self.hasSuffix("-fsi") {
+            return "financial"
+        }
+        if self.hasSuffix("-adc") {
+            return "autoDriving"
+        }
+        if self.hasSuffix("-xinan") || self.hasSuffix("-sycft") {
+            return "internal"
+        }
+        return nil
+    }
+}
