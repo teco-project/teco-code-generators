@@ -3,7 +3,7 @@ import SwiftSyntaxBuilder
 
 func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDeclSyntax {
     StructDeclSyntax("""
-        /// Common error type returned by Tencent Cloud API.
+        /// Common error type returned by Tencent Cloud.
         public struct \(qualifiedTypeName): TCServiceErrorType
         """) {
         EnumDeclSyntax("enum Code: String") {
@@ -27,6 +27,12 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
                 }
                 self.error = error
                 self.context = context
+            }
+            """)
+
+        FunctionDeclSyntax("""
+            public func asCommonError() -> TCCommonError? {
+                return self
             }
             """)
 
