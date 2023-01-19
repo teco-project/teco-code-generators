@@ -36,7 +36,7 @@ func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, 
         ///
         /// - Parameters:
         ///    - client: ``TCClient`` used to perform actions.
-        ///    - region: Region of the service you want to operate on.
+        ///    - region: Default region of the service you want to operate on.
         ///    - language: Preferred language for API response.
         ///    - endpoint: Custom endpoint URL for API request.
         ///    - timeout: Timeout value for HTTP requests.
@@ -50,9 +50,9 @@ func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, 
         ) {
             self.client = client
             self.config = TCServiceConfig(
-                region: region,
                 service: \(literal: serviceMetadata.shortName),
-                apiVersion: \(literal: serviceMetadata.version),
+                version: \(literal: serviceMetadata.version),
+                region: region,
                 language: language,
                 endpoint: endpoint,
                 errorType: \(raw: hasError ? "TC\(serviceMetadata.shortName.upperFirst())Error.self" : "nil"),
