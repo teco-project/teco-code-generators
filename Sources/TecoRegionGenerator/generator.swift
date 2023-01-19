@@ -53,7 +53,7 @@ struct TecoRegionGenerator: ParsableCommand {
                 }
 
                 FunctionDeclSyntax("""
-                    /// Constructs a ``TCRegion`` with custom Region ID.
+                    /// Returns a ``TCRegion`` with custom Region ID.
                     public static func other(_ id: String, kind: Kind = .internal) -> TCRegion {
                         TCRegion(id: id, kind: kind)
                     }
@@ -74,7 +74,7 @@ struct TecoRegionGenerator: ParsableCommand {
 
             ExtensionDeclSyntax("""
                 extension TCRegion {
-                    /// Whether a region is accessible from another.
+                    /// Returns a Boolean value indicating whether a region is accessible from another.
                     public func isAccessible(from region: TCRegion) -> Bool {
                         self == region || (self.kind == region.kind && self.kind != .internal)
                     }

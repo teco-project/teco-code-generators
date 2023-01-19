@@ -15,6 +15,15 @@ struct TecoCommonErrorGenerator: ParsableCommand {
 
         let sourceFile = SourceFileSyntax {
             buildCommonErrorStructDecl("TCCommonError", errors: errors)
+
+            ExtensionDeclSyntax(#"""
+                extension TCCommonError {
+                    /// Returns a Boolean value indicating whether a ``TCCommonError`` belongs to another.
+                    internal static func ~= (lhs: Self, rhs: Self) -> Bool {
+                        lhs.errorCode.hasPrefix("\(rhs.errorCode).")
+                    }
+                }
+                """#)
         }.withCopyrightHeader(generator: Self.self)
 
         try sourceFile.save(to: self.output)
