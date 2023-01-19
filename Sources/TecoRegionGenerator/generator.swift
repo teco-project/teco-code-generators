@@ -23,6 +23,7 @@ struct TecoRegionGenerator: ParsableCommand {
                     """)
 
                 EnumDeclSyntax("""
+                    /// Tencent Cloud service region kind.
                     public enum Kind: Equatable, Sendable {
                         /// Global service regions that are open and accessible within each other.
                         case global
@@ -32,7 +33,10 @@ struct TecoRegionGenerator: ParsableCommand {
                         case `internal`
                     }
                     """)
-                VariableDeclSyntax("public var kind: Kind")
+                VariableDeclSyntax("""
+                    /// Region type by data isolation.
+                    public var kind: Kind
+                    """)
 
                 InitializerDeclSyntax("""
                     public init(id: String, kind: Kind = .global) {
@@ -54,8 +58,12 @@ struct TecoRegionGenerator: ParsableCommand {
 
                 FunctionDeclSyntax("""
                     /// Returns a ``TCRegion`` with custom Region ID.
-                    public static func other(_ id: String, kind: Kind = .internal) -> TCRegion {
-                        TCRegion(id: id, kind: kind)
+                    ///
+                    /// - Parameters:
+                    ///   - id: Region ID.
+                    ///   - kind: Region type by data isolation. Defaults to `.financial` if region ID is suffixed with `-fsi`, else defaults to `.internal`.
+                    public static func custom(_ id: String, kind: Kind? = nil) -> TCRegion {
+                        TCRegion(id: id, kind: kind ?? Self.defaultKind(from: id))
                     }
                     """)
 
@@ -72,14 +80,21 @@ struct TecoRegionGenerator: ParsableCommand {
                 }
                 """)
 
-            ExtensionDeclSyntax("""
-                extension TCRegion {
+            ExtensionDeclSyntax(extendedType: TypeSyntax("TCRegion")) {
+                FunctionDeclSyntax("""
                     /// Returns a Boolean value indicating whether a region is accessible from another.
                     public func isAccessible(from region: TCRegion) -> Bool {
                         self == region || (self.kind == region.kind && self.kind != .internal)
                     }
-                }
-                """)
+                    """)
+
+                FunctionDeclSyntax("""
+                    /// Returns the default region kind inferred from region ID.
+                    private static func defaultKind(from regionId: String) -> Kind {
+                        return regionId.hasSuffix("-fsi") ? .financial : .internal
+                    }
+                    """)
+            }
         }.withCopyrightHeader(generator: Self.self)
 
         try sourceFile.save(to: self.output)
