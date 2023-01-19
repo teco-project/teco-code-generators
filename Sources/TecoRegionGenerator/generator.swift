@@ -10,7 +10,7 @@ struct TecoRegionGenerator: ParsableCommand {
     func run() throws {
         let tcRegionMap = getRegionMap(from: tcRegions)
         let tcIntlRegionMap = getRegionMap(from: tcIntlRegions)
-        let regions = getRegionDescriptionMaps(from: tcRegionMap, tcIntlRegionMap)
+        let regions = getRegionDescriptionMaps(from: tcIntlRegionMap, tcRegionMap)
 
         let sourceFile = SourceFileSyntax {
             StructDeclSyntax("""
