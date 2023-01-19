@@ -5,7 +5,7 @@ import SwiftSyntaxBuilder
 func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDeclSyntax {
     ProtocolDeclSyntax("""
         /// Service error type returned by `\(serviceNamespace)`.
-        public protocol TC\(serviceNamespace)ErrorType: TCPlatformErrorType
+        public protocol TC\(serviceNamespace)ErrorType: TCServiceErrorType
         """) {
         let baseErrorType = "TC\(serviceNamespace)Error"
         FunctionDeclSyntax("""
