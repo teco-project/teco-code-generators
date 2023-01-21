@@ -41,19 +41,19 @@ let package = Package(
             name: "TecoCommonErrorGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
-                .product(name: "OrderedCollections", package: "swift-argument-parser"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
             ]),
         .executableTarget(
             name: "TecoRegionGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
-                .product(name: "OrderedCollections", package: "swift-argument-parser"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
             ]),
         .executableTarget(
             name: "TecoServiceGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
-                .product(name: "OrderedCollections", package: "swift-argument-parser"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
             ]),
         .executableTarget(
             name: "TecoPackageGenerator",
