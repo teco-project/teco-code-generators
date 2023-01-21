@@ -183,11 +183,13 @@ struct TecoServiceGenerator: ParsableCommand {
                             }
                         }
 
-                        buildActionDecl(for: action, metadata: metadata)
-                        buildAsyncActionDecl(for: action, metadata: metadata)
+                        let discardableResult = output.members.count == 1
 
-                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers)
-                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers)
+                        buildActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
+                        buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
+
+                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
+                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                     }
                 }.withCopyrightHeader(generator: Self.self)
                 
