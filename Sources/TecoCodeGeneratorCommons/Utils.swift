@@ -34,7 +34,7 @@ extension SourceFileSyntax {
         let header = """
             //===----------------------------------------------------------------------===//
             //
-            // This source file is part of the Teco open source project.
+            // This source file is part of the Teco open source project
             //
             // Copyright (c) \(year) the Teco project authors
             // Licensed under Apache License v2.0
@@ -51,7 +51,7 @@ extension SourceFileSyntax {
             
             """
         if let leadingTrivia = self.leadingTrivia {
-            return self.withLeadingTrivia(.init(pieces: [.docBlockComment(header)] + leadingTrivia.pieces))
+            return self.withLeadingTrivia(.init(pieces: [.lineComment(header)] + leadingTrivia.pieces))
         } else {
             return self.withLeadingTrivia(.lineComment(header))
         }
