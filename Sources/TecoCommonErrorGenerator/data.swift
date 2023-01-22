@@ -91,7 +91,15 @@ struct APIError: Codable {
     let productCNName: String?
 
     var solution: String? {
-        self._solution == "业务正在更新中，请您耐心等待。" ? nil : self._solution
+        switch self._solution {
+        case "无", "暂无", "占位符":
+            return nil
+        case "业务正在更新中，请您耐心等待。":
+            return nil
+        default:
+            return self._solution.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\r\n", with: "\n")
+        }
     }
 
     enum CodingKeys: String, CodingKey {

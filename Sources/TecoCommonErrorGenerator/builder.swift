@@ -46,7 +46,7 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
 
         for (_, identifier, description, solution) in errors {
             let summary = description.joined(separator: " / ")
-            let solution = solution?.split(whereSeparator: \.isNewline).joined(separator: "\n\n")
+            let solution = solution.map(formatErrorSolution)
 
             VariableDeclSyntax("""
                 \(raw: buildDocumentation(summary: summary, discussion: solution))
