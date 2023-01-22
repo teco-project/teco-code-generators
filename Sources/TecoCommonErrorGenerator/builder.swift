@@ -7,7 +7,7 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
         public struct \(qualifiedTypeName): TCServiceErrorType
         """) {
         EnumDeclSyntax("enum Code: String") {
-            for (code, identifier, _) in errors {
+            for (code, identifier, _, _) in errors {
                 EnumCaseDeclSyntax("case \(raw: identifier) = \(literal: code)")
             }
         }
@@ -43,10 +43,9 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
             }
             """)
 
-        for (_, identifier, description) in errors {
-            let comment = description.joined(separator: " / ")
+        for (_, identifier, description, solution) in errors {
             VariableDeclSyntax("""
-                \(raw: comment.isEmpty ? "" : "/// \(comment)")
+                \(raw: docComment(summary: description.joined(separator: " / "), discussion: solution))
                 public static var \(raw: identifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: identifier))
                 }

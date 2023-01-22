@@ -9,9 +9,21 @@ struct TecoCommonErrorGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
+    @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
+    var errorFile: URL?
+
     func run() throws {
         let codes = getErrorCodes()
-        let errors = getErrorDefinitions(from: codes)
+
+        let apiErrors: [APIError]
+        if let errorFile {
+            apiErrors = try JSONDecoder().decode([APIError].self, from: .init(contentsOf: errorFile))
+                .filter { $0.productShortName == "PLATFORM" }
+        } else {
+            apiErrors = []
+        }
+
+        let errors = getErrorDefinitions(from: codes, apiErrors: apiErrors)
 
         let sourceFile = SourceFileSyntax {
             buildCommonErrorStructDecl("TCCommonError", errors: errors)
