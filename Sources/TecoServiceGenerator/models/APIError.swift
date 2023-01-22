@@ -2,19 +2,36 @@ struct APIError: Codable {
     let productShortName: String
     let productVersion: String
     let code: String
-    let description: String?
+    private let _description: String?
     private let _solution: String
     let productCNName: String?
 
+    var description: String? {
+        if #available(macOS 13, *) {
+            return self._description.map(formatErrorDescription)
+        } else {
+            // documentation style may be ugly since this platform doesn't support Regex...
+            return self._description
+        }
+    }
+
     var solution: String? {
-        self._solution == "业务正在更新中，请您耐心等待。" ? nil : self._solution
+        switch self._solution {
+        case "无", "暂无", "占位符":
+            return nil
+        case "业务正在更新中，请您耐心等待。":
+            return nil
+        default:
+            return self._solution.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\r\n", with: "\n")
+        }
     }
 
     enum CodingKeys: String, CodingKey {
         case productShortName = "productName"
         case productVersion
         case code
-        case description
+        case _description = "description"
         case _solution = "solution"
         case productCNName
     }

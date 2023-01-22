@@ -1,4 +1,5 @@
 import ArgumentParser
+import RegexBuilder
 @_implementationOnly import OrderedCollections
 
 func getErrorDomain(from code: String) -> String? {
@@ -87,6 +88,29 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
         type += "?"
     }
     return type
+}
+
+@available(macOS 13, *)
+func formatErrorDescription(_ description: String) -> String {
+    let codeTagRegex = Regex {
+        "<code>"
+        Capture(OneOrMore(.any, .reluctant))
+        "</code>"
+    }
+    let aTagRegex = Regex {
+        "<a href=\""
+        Capture(OneOrMore(.any, .reluctant))
+        "\">"
+        Capture(OneOrMore(.any, .reluctant))
+        "</a>"
+    }
+    return description
+        .replacing(codeTagRegex) { match in
+            "`\(match.1)`"
+        }
+        .replacing(aTagRegex) { match in
+            "[\(match.2)](\(match.1))"
+        }
 }
 
 func skipAuthorizationParameter(for action: String) -> String {
