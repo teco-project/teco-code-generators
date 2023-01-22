@@ -1,5 +1,6 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
+import TecoCodeGeneratorCommons
 @_implementationOnly import OrderedCollections
 
 func buildServiceErrorTypeDecl(_ serviceNamespace: String) -> ProtocolDeclSyntax {
@@ -63,7 +64,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
         for (identifier, error) in errorMap {
             let swiftIdentifier = identifier.swiftIdentifierEscaped()
             VariableDeclSyntax("""
-                \(raw: docComment(summary: error.description, discussion: error.solution))
+                \(raw: buildDocumentation(summary: error.description, discussion: error.solution))
                 public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: swiftIdentifier))
                 }

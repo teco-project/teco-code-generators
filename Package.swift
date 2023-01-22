@@ -36,6 +36,7 @@ let package = Package(
         .target(name: "TecoCodeGeneratorCommons", dependencies: [
             .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "OrderedCollections", package: "swift-collections"),
         ]),
         .executableTarget(
             name: "TecoCommonErrorGenerator",

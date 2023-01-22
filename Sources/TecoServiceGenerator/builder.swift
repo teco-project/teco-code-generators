@@ -1,5 +1,6 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
+import TecoCodeGeneratorCommons
 
 @CodeBlockItemListBuilder
 func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeBlockItemListSyntax {
@@ -11,8 +12,7 @@ func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeB
 
 func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> StructDeclSyntax {
     StructDeclSyntax("""
-        \(docComment(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace,
-                     discussion: model.metadata.document))
+        \(buildDocumentation(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace, discussion: model.metadata.document))
         public struct \(model.namespace): TCService
         """) {
 

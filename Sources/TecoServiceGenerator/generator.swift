@@ -87,12 +87,12 @@ struct TecoServiceGenerator: ParsableCommand {
                 ExtensionDeclSyntax("extension \(qualifiedName)") {
                     for (model, metadata) in models {
                         StructDeclSyntax("""
-                                \(docComment(metadata.document))
+                                \(buildDocumentation(summary: metadata.document))
                                 public struct \(model): \(metadata.protocols.joined(separator: ", "))
                                 """) {
                             for member in metadata.members {
                                 VariableDeclSyntax("""
-                                    \(raw: docComment(member.document))
+                                    \(raw: buildDocumentation(summary: member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
@@ -140,13 +140,13 @@ struct TecoServiceGenerator: ParsableCommand {
 
                     ExtensionDeclSyntax("extension \(qualifiedName)") {
                         StructDeclSyntax("""
-                            \(docComment(input.document))
+                            \(buildDocumentation(summary: input.document))
                             public struct \(metadata.input): TCRequestModel
                             """) {
 
                             for member in inputMembers {
                                 VariableDeclSyntax("""
-                                    \(raw: docComment(member.document))
+                                    \(raw: buildDocumentation(summary: member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }
@@ -163,13 +163,13 @@ struct TecoServiceGenerator: ParsableCommand {
                         }
 
                         StructDeclSyntax("""
-                            \(docComment(output.document))
+                            \(buildDocumentation(summary: output.document))
                             public struct \(metadata.output): TCResponseModel
                             """) {
 
                             for member in output.members {
                                 VariableDeclSyntax("""
-                                    \(raw: docComment(member.document))
+                                    \(raw: buildDocumentation(summary: member.document))
                                     \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                                     """)
                             }

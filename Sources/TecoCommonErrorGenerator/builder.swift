@@ -1,5 +1,6 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
+import TecoCodeGeneratorCommons
 
 func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDeclSyntax {
     StructDeclSyntax("""
@@ -44,8 +45,11 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
             """)
 
         for (_, identifier, description, solution) in errors {
+            let summary = description.joined(separator: " / ")
+            let solution = solution?.split(whereSeparator: \.isNewline).joined(separator: "\n\n")
+
             VariableDeclSyntax("""
-                \(raw: docComment(summary: description.joined(separator: " / "), discussion: solution))
+                \(raw: buildDocumentation(summary: summary, discussion: solution))
                 public static var \(raw: identifier): \(raw: qualifiedTypeName) {
                     \(raw: qualifiedTypeName)(.\(raw: identifier))
                 }

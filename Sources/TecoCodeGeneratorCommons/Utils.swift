@@ -1,5 +1,6 @@
 import Foundation
 import SwiftSyntax
+@_implementationOnly import OrderedCollections
 
 extension String {
     public func lowerFirst() -> String {
@@ -82,4 +83,35 @@ extension SourceFileSyntax {
         // Save to file.
         try sourceCode.write(to: url, atomically: true, encoding: .utf8)
     }
+}
+
+public func buildDocumentation(summary: String?, discussion: String? = nil) -> String {
+    var pieces: [String] = []
+
+    if let summary, !summary.isEmpty {
+        pieces.append(buildDocumentation(summary))
+    }
+    if let discussion, !discussion.isEmpty {
+        pieces.append(buildDocumentation(discussion))
+    }
+    let document = OrderedSet(pieces).joined(separator: "\n///\n")
+
+    return document
+}
+
+private func buildDocumentation(_ document: String) -> String {
+    guard !document.isEmpty else { return "" }
+
+    return document
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        .map { line in
+            var line = String(line)
+            while line.last?.isWhitespace == true {
+                line.removeLast()
+            }
+            return line
+        }
+        .map { $0.isEmpty ? "///" : "/// \($0)" }
+        .joined(separator: "\n")
 }

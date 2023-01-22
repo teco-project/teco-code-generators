@@ -117,24 +117,6 @@ func initializerParameterList(for members: [APIObject.Member], packed: Bool = fa
     return packed ? params.map({ $0 + ", " }).joined() : params.joined(separator: ", ")
 }
 
-func docComment(_ document: String?) -> String {
-    (document ?? "")
-        .split(whereSeparator: \.isNewline)
-        .map { "/// \($0)" }
-        .joined(separator: "\n")
-}
-
-func docComment(summary: String?, discussion: String?) -> String {
-    var document: [String] = []
-    if let summary, !summary.isEmpty {
-        document.append("/// \(summary.trimmingCharacters(in: .whitespacesAndNewlines))")
-    }
-    if case let discussion = docComment(discussion), !discussion.isEmpty {
-        document.append(discussion)
-    }
-    return OrderedSet(document).joined(separator: "\n///\n")
-}
-
 func publicLetWithWrapper(for member: APIObject.Member) -> String {
     guard member.type != .binary else {
         fatalError("Multipart APIs shouldn't be generated!")
