@@ -1,4 +1,5 @@
 import Foundation
+import ArgumentParser
 @_spi(RawSyntax) import SwiftSyntax
 @_implementationOnly import OrderedCollections
 
