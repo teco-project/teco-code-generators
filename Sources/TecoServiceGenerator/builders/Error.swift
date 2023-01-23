@@ -62,11 +62,10 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
             """)
         
         for (identifier, error) in errorMap {
-            let swiftIdentifier = identifier.swiftIdentifierEscaped()
             VariableDeclSyntax("""
                 \(raw: buildDocumentation(summary: error.description, discussion: error.solution))
-                public static var \(raw: swiftIdentifier): \(raw: qualifiedTypeName) {
-                    \(raw: qualifiedTypeName)(.\(raw: swiftIdentifier))
+                public static var \(raw: identifier.swiftIdentifierEscaped()): \(raw: qualifiedTypeName) {
+                    \(raw: qualifiedTypeName)(.\(raw: identifier))
                 }
                 """)
         }
@@ -81,7 +80,7 @@ func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], e
                 SwitchStmtSyntax(expression: ExprSyntax("self.error")) {
                     for (identifier, error) in errorMap {
                         SwitchCaseSyntax("""
-                            case .\(raw: identifier.swiftIdentifierEscaped()):
+                            case .\(raw: identifier):
                                 code = .\(raw: error.identifier)
                             """)
                     }

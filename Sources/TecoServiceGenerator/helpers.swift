@@ -1,4 +1,5 @@
 import ArgumentParser
+import TecoCodeGeneratorCommons
 import RegexBuilder
 @_implementationOnly import OrderedCollections
 
@@ -201,8 +202,6 @@ extension APIObject.Member {
     }
 }
 
-let swiftKeywords: Set = ["associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout", "internal", "let", "open", "operator", "private", "precedencegroup", "protocol", "public", "rethrows", "static", "struct", "subscript", "typealias", "var", "break", "case", "catch", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "throw", "switch", "where", "while", "Any", "as", "catch", "false", "is", "nil", "rethrows", "self", "Self", "super", "throw", "throws", "true", "try"]
-
 extension APIObject.Member {
     var identifier: String {
         self.name.lowerFirst()
@@ -210,11 +209,5 @@ extension APIObject.Member {
 
     var escapedIdentifier: String {
         self.identifier.swiftIdentifierEscaped()
-    }
-}
-
-extension String {
-    func swiftIdentifierEscaped() -> String {
-        swiftKeywords.contains(self) ? "`\(self)`" : self
     }
 }

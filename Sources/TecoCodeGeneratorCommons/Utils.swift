@@ -1,5 +1,5 @@
 import Foundation
-import SwiftSyntax
+@_spi(RawSyntax) import SwiftSyntax
 @_implementationOnly import OrderedCollections
 
 extension String {
@@ -19,6 +19,15 @@ extension String {
 
     public func upperFirst() -> String {
         return String(self[...startIndex]).uppercased() + self[index(after: startIndex)...]
+    }
+
+    public var isSwiftKeyword: Bool {
+        var string = self
+        return string.withSyntaxText(Keyword.init)?.isLexerClassified ?? false
+    }
+
+    public func swiftIdentifierEscaped() -> String {
+        self.isSwiftKeyword ? "`\(self)`" : self
     }
 }
 
