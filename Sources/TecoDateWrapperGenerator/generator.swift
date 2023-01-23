@@ -1,7 +1,7 @@
 import ArgumentParser
+import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
 import TecoCodeGeneratorCommons
 
 @main
@@ -57,7 +57,7 @@ struct TecoDateWrapperGenerator: ParsableCommand {
                 }
             }.withCopyrightHeader(generator: Self.self)
 
-            try sourceFile.save(to: outputDir.appendingPathComponent(encoding.rawValue + ".swift"))
+            try sourceFile.save(to: outputDir.appendingPathComponent("\(encoding.rawValue).swift"))
         }
     }
 }

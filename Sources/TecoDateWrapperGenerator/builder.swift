@@ -1,6 +1,20 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
+@CodeBlockItemListBuilder
+func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
+    switch encoding {
+    case .date, .timestamp:
+        ImportDeclSyntax("import struct Foundation.Date")
+        ImportDeclSyntax("import struct Foundation.Locale")
+        ImportDeclSyntax("import struct Foundation.TimeZone")
+        ImportDeclSyntax("import class Foundation.DateFormatter")
+    case .timestamp_iso8601:
+        ImportDeclSyntax("import struct Foundation.Date")
+        ImportDeclSyntax("import class Foundation.ISO8601DateFormatter")
+    }
+}
+
 func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDeclSyntax {
     let dateFormat: String
     switch encoding {
@@ -24,21 +38,4 @@ func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDeclSyntax {
             return formatter
         }
         """)
-}
-
-func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
-    switch encoding {
-    case .date, .timestamp:
-        return CodeBlockItemListSyntax {
-            ImportDeclSyntax("import struct Foundation.Date")
-            ImportDeclSyntax("import struct Foundation.Locale")
-            ImportDeclSyntax("import struct Foundation.TimeZone")
-            ImportDeclSyntax("import class Foundation.DateFormatter")
-        }
-    case .timestamp_iso8601:
-        return CodeBlockItemListSyntax {
-            ImportDeclSyntax("import struct Foundation.Date")
-            ImportDeclSyntax("import class Foundation.ISO8601DateFormatter")
-        }
-    }
 }
