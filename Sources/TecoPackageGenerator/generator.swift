@@ -38,7 +38,7 @@ struct TecoPackageGenerator: ParsableCommand {
                 }
                 targets.append((service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst()))
 
-                // Experimental service generation
+                // TODO: Service generation with imported API
                 if let serviceGenerator {
                     let sourceDirectory = packageDir
                         .appendingPathComponent("Sources")
@@ -89,23 +89,11 @@ struct TecoPackageGenerator: ParsableCommand {
                 let package = Package(
                     name: "teco",
                     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
-                    products: [\(ArrayElementListSyntax {
-                        for target in targets {
-                            let identifier = "Teco\(target.service)\(target.version)"
-                            ArrayElementSyntax(leadingTrivia: .newline, expression: FunctionCallExprSyntax(".library(name: \(literal: identifier), targets: [\(literal: identifier)])"), trailingComma: .commaToken())
-                        }
-                    }.withTrailingTrivia(.newline))],
+                    products: \(buildProductListExpr(for: targets)),
                     dependencies: [
                         .package(url: "https://github.com/teco-project/teco-core.git", \(raw: tecoCoreRequirement))
                     ],
-                    targets: [\(ArrayElementListSyntax {
-                        let dependency = #"[.product(name: "TecoCore", package: "teco-core")]"#
-                        for target in targets {
-                            let identifier = "Teco\(target.service)\(target.version)"
-                            let path = "./Sources/Teco/\(target.service)/\(target.version)"
-                            ArrayElementSyntax(leadingTrivia: .newline, expression: FunctionCallExprSyntax(".target(name: \(literal: identifier), dependencies: \(raw: dependency), path: \(literal: path))"), trailingComma: .commaToken())
-                        }
-                    }.withTrailingTrivia(.newline))]
+                    targets: \(buildTargetListExpr(for: targets))
                 )
                 """)
         }
