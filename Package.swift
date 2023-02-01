@@ -12,6 +12,9 @@ let package = Package(
             name: "teco-common-error-generator",
             targets: ["TecoCommonErrorGenerator"]),
         .executable(
+            name: "teco-region-data-generator",
+            targets: ["TecoRegionDataGenerator"]),
+        .executable(
             name: "teco-region-generator",
             targets: ["TecoRegionGenerator"]),
         .executable(
@@ -29,6 +32,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-syntax.git", revision: "abc66e0e5661e6f90b1c24feb3af5da98cc690a0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
+        .package(url: "https://github.com/teco-project/teco-core.git", from: "0.4.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -38,6 +42,13 @@ let package = Package(
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             .product(name: "OrderedCollections", package: "swift-collections"),
         ]),
+        .executableTarget(
+            name: "TecoRegionDataGenerator",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorCommons"),
+                .product(name: "TecoCore", package: "teco-core"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
+            ]),
         .executableTarget(
             name: "TecoCommonErrorGenerator",
             dependencies: [
