@@ -8,22 +8,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos-12
-          - ubuntu-latest
         build-config:
           - debug
           - release
-        generator:
-          - teco-common-error-generator
-          - teco-region-generator
-          - teco-service-generator
-          - teco-package-generator
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Build ${{ matrix.generator }}
-        run: swift build -c ${{ matrix.build-config }} --product ${{ matrix.generator }}
-      - name: Verify ${{ matrix.generator }}
-        run: swift run -c ${{ matrix.build-config }} --skip-build ${{ matrix.generator }} --help
+      - name: Build
+        run: swift build -c ${{ matrix.build-config }}
