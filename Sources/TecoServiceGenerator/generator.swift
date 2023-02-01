@@ -17,6 +17,11 @@ struct TecoServiceGenerator: ParsableCommand {
     var outputDir: URL
 
     func run() throws {
+        // Check for Regex support
+        if #unavailable(macOS 13) {
+            print("warning: Documentation may look uglier because the platform doesn't support Regex...")
+        }
+
         let decoder = JSONDecoder()
         let service = try decoder.decode(APIModel.self, from: .init(contentsOf: source))
         let qualifiedName = service.namespace
@@ -125,10 +130,10 @@ struct TecoServiceGenerator: ParsableCommand {
             for (action, metadata) in service.actions {
                 guard let input = service.objects[metadata.input], input.type == .object,
                       let output = service.objects[metadata.output], output.type == .object else {
-                    fatalError()
+                    fatalError("broken API metadata")
                 }
 
-                // FIXME: Skip Multipart-only API for now
+                // Skip Multipart-only API
                 if !input.members.isEmpty, input.members.allSatisfy({ $0.type == .binary }) {
                     continue
                 }

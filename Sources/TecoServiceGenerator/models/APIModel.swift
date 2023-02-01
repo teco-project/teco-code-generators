@@ -11,6 +11,25 @@ struct APIModel: Codable {
         let document: String
         let input: String
         let output: String
+        let status: String?
+
+        var deprecated: Bool {
+            switch self.status {
+            case .none, "online": return false
+            case "deprecated": return true
+            default: fatalError("Unexpected action status: \(status!)")
+            }
+        }
+
+        var deprecationMessage: String? {
+            guard self.deprecated else { return nil }
+            if #available(macOS 13, *) {
+                return self.document.split(separator: "/n/n").first.map(String.init)
+            } else {
+                // message may be stripped since this platform doesn't support Regex...
+                return self.document.split(whereSeparator: \.isNewline).first.map(String.init)
+            }
+        }
     }
 
     struct Metadata: Codable {
