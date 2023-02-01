@@ -14,7 +14,7 @@ struct Region: Hashable {
     }
 }
 
-let regions: [Region] = [
+let regions = [
     Region(id: "ap-guangzhou", localizedNames: "South China(Guangzhou)", "华南地区(广州)"),
     Region(id: "ap-shanghai", localizedNames: "East China(Shanghai)", "华东地区(上海)"),
     Region(id: "ap-nanjing", localizedNames: "East China(Nanjing)", "华东地区(南京)"),

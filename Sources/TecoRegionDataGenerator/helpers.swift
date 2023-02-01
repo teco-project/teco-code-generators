@@ -38,7 +38,7 @@ struct RegionInfo: TCOutputModel {
     }
 }
 
-struct Region: TCService {
+struct RegionService: TCService {
     let client: TCClient
     let config: TCServiceConfig
 
@@ -52,13 +52,10 @@ struct Region: TCService {
         self.config = service.config.with(patch: patch)
     }
 
-    func shutdown() throws {
-        try self.client.syncShutdown()
-    }
-
     func describeRegions(for product: String) async throws -> [RegionInfo] {
-        let request = DescribeRegionsRequest(product: product)
-        let response: DescribeRegionsResponse = try await self.client.execute(action: "DescribeRegions", serviceConfig: self.config, input: request).get()
-        return response.regionSet
+        try await self.client.execute(action: "DescribeRegions",
+                                      serviceConfig: self.config,
+                                      input: DescribeRegionsRequest(product: product),
+                                      outputs: DescribeRegionsResponse.self).get().regionSet
     }
 }

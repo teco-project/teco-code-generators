@@ -10,12 +10,15 @@ struct TecoRegionDataGenerator: AsyncParsableCommand {
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
-    func run() async throws {
-        let client = Region()
-        defer { try? client.shutdown() }
+    @Option(name: .long)
+    var product: String = "vpc"
 
-        let map = getRegionMap(from: try await client.describeRegions(for: "vpc"))
-        let intlMap = getRegionMap(from: try await client.with(language: .en_US).describeRegions(for: "vpc"))
+    func run() async throws {
+        let client = RegionService()
+        defer { try? client.client.syncShutdown() }
+
+        let map = getRegionMap(from: try await client.describeRegions(for: product))
+        let intlMap = getRegionMap(from: try await client.with(language: .en_US).describeRegions(for: product))
 
         let sourceFile = SourceFileSyntax {
             ImportDeclSyntax("""
@@ -36,7 +39,7 @@ struct TecoRegionDataGenerator: AsyncParsableCommand {
                 }
                 """)
 
-            VariableDeclSyntax("let regions: [Region] = \(buildRegionListExpr(from: intlMap, map))")
+            VariableDeclSyntax("let regions = \(buildRegionListExpr(from: intlMap, map))")
 
         }
 

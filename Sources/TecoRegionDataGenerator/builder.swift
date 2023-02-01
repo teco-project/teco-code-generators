@@ -3,11 +3,11 @@ import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
 func buildRegionExpr(id: String, names: [String], trailingComma: Bool = false) -> ArrayElementSyntax {
-    precondition(!names.isEmpty)
+    precondition(names.isEmpty == false)
     let valueExpr = FunctionCallExprSyntax(callee: ExprSyntax("Region")) {
         TupleExprElementSyntax(label: "id", expression: ExprSyntax("\(literal: id)"))
         TupleExprElementSyntax(label: "localizedNames", expression: ExprSyntax("\(literal: names[0])"))
-        for name in names[1...] {
+        for name in names.dropFirst() {
             TupleExprElementSyntax(expression: ExprSyntax("\(literal: name)"))
         }
     }
@@ -16,10 +16,8 @@ func buildRegionExpr(id: String, names: [String], trailingComma: Bool = false) -
 
 func buildRegionListExpr(from maps: OrderedDictionary<String, String>...) -> ArrayExprSyntax {
     let baseKeys = maps[0].keys
-    if maps.count > 1 {
-        for map in maps[1...] {
-            precondition(map.keys == baseKeys)
-        }
+    for map in maps.dropFirst() {
+        precondition(map.keys == baseKeys)
     }
     return ArrayExprSyntax(elements: ArrayElementListSyntax {
         for id in baseKeys {
