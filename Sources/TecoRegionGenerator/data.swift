@@ -1,16 +1,20 @@
 // TODO: Generate definitions with TecoCodeGenerators and fetch with Teco.
 
 import Foundation
+@_implementationOnly import OrderedCollections
+
+struct Region: Hashable {
+    let id: String
+    let localizedNames: OrderedSet<String>
+}
 
 struct RegionInfo: Codable {
     let region: String
     let regionName: String
-    let regionState: String
 
     enum CodingKeys: String, CodingKey {
         case region = "Region"
         case regionName = "RegionName"
-        case regionState = "RegionState"
     }
 }
 
@@ -366,5 +370,6 @@ let tcIntlJSONString = """
     ]
 """
 
-let tcRegions = try! JSONDecoder().decode([RegionInfo].self, from: tcJSONString.data(using: .utf8)!)
-let tcIntlRegions = try! JSONDecoder().decode([RegionInfo].self, from: tcIntlJSONString.data(using: .utf8)!)
+private let tcRegions = try! JSONDecoder().decode([RegionInfo].self, from: tcJSONString.data(using: .utf8)!)
+private let tcIntlRegions = try! JSONDecoder().decode([RegionInfo].self, from: tcIntlJSONString.data(using: .utf8)!)
+let regions = getRegions(from: getRegionMap(from: tcIntlRegions), getRegionMap(from: tcRegions))

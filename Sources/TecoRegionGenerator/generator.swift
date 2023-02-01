@@ -9,10 +9,6 @@ struct TecoRegionGenerator: ParsableCommand {
     var output: URL
 
     func run() throws {
-        let tcRegionMap = getRegionMap(from: tcRegions)
-        let tcIntlRegionMap = getRegionMap(from: tcIntlRegions)
-        let regions = getRegionDescriptionMaps(from: tcIntlRegionMap, tcRegionMap)
-
         let sourceFile = SourceFileSyntax {
             StructDeclSyntax("""
                 /// Tencent Cloud region identified by Region ID.
@@ -46,12 +42,10 @@ struct TecoRegionGenerator: ParsableCommand {
                     }
                     """)
 
-                for (region, names) in regions {
-                    let identifier = region.replacingOccurrences(of: "-", with: "_")
-                    let description = Array(names).joined(separator: " / ")
+                for region in regions {
                     VariableDeclSyntax("""
-                        /// \(raw: description)
-                        public static var \(raw: identifier): TCRegion {
+                        /// \(raw: region.description)
+                        public static var \(raw: region.identifier): TCRegion {
                             \(buildRegionExpr(for: region))
                         }
                         """)
