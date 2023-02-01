@@ -1,4 +1,4 @@
-extension Region: Equatable, Comparable {
+extension Region {
     var description: String { self.localizedNames.joined(separator: " / ") }
     var identifier: String { self.id.replacingOccurrences(of: "-", with: "_") }
     var kind: String? {
@@ -10,7 +10,9 @@ extension Region: Equatable, Comparable {
         }
         return nil
     }
+}
 
+extension Region: Comparable {
     static func == (lhs: Region, rhs: Region) -> Bool {
         lhs.id == rhs.id
     }

@@ -59,7 +59,6 @@ let package = Package(
             name: "TecoRegionGenerator",
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
-                .product(name: "OrderedCollections", package: "swift-collections"),
             ]),
         .executableTarget(
             name: "TecoServiceGenerator",

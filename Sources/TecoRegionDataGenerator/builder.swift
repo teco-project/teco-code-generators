@@ -2,14 +2,11 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
-func buildRegionExpr(id: String, names: [String], trailingComma: Bool = false) -> ArrayElementSyntax {
+func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool = false) -> ArrayElementSyntax {
     precondition(names.isEmpty == false)
     let valueExpr = FunctionCallExprSyntax(callee: ExprSyntax("Region")) {
         TupleExprElementSyntax(label: "id", expression: ExprSyntax("\(literal: id)"))
-        TupleExprElementSyntax(label: "localizedNames", expression: ExprSyntax("\(literal: names[0])"))
-        for name in names.dropFirst() {
-            TupleExprElementSyntax(expression: ExprSyntax("\(literal: name)"))
-        }
+        TupleExprElementSyntax(label: "localizedNames", expression: ExprSyntax("\(literal: Array(names))"))
     }
     return ArrayElementSyntax(expression: valueExpr, trailingComma: trailingComma ? .commaToken() : nil)
 }
@@ -21,7 +18,7 @@ func buildRegionListExpr(from maps: OrderedDictionary<String, String>...) -> Arr
     }
     return ArrayExprSyntax(elements: ArrayElementListSyntax {
         for id in baseKeys {
-            buildRegionExpr(id: id, names: maps.map { $0[id]! }, trailingComma: true)
+            buildRegionExpr(id: id, names: .init(maps.map { $0[id]! }), trailingComma: true)
                 .withTrailingTrivia(.newline)
         }
     }.withLeadingTrivia(.newline))
