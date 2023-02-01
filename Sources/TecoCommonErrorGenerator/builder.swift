@@ -45,7 +45,7 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
             """)
 
         for (_, identifier, description, solution) in errors {
-            let summary = description.joined(separator: " / ")
+            let summary = description.joined(separator: "\n")
             let solution = solution.map(formatErrorSolution)
 
             VariableDeclSyntax("""
