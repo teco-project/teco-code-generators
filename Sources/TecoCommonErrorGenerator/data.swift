@@ -1,5 +1,5 @@
 // https://cloud.tencent.com/document/product/213/30435#.E5.85.AC.E5.85.B1.E9.94.99.E8.AF.AF.E7.A0.81
-let tcCommonErrors: [ErrorCode : String] = [
+let tcCommonErrors: [String : String] = [
     "ActionOffline": "接口已下线。",
     "AuthFailure.InvalidAuthorization": "请求头部的`Authorization`不符合腾讯云标准。",
     "AuthFailure.InvalidSecretId": "密钥非法（不是云API密钥类型）。",
@@ -41,7 +41,7 @@ let tcCommonErrors: [ErrorCode : String] = [
 ]
 
 // https://www.tencentcloud.com/document/product/213/33281#common-error-codes
-let tcIntlCommonErrors: [ErrorCode : String] = [
+let tcIntlCommonErrors: [String : String] = [
     "ActionOffline": "This API has been deprecated.",
     "AuthFailure.InvalidAuthorization": "`Authorization` in the request header is invalid.",
     "AuthFailure.InvalidSecretId": "Invalid key (not a TencentCloud API key type).",

@@ -14,19 +14,11 @@ struct TecoCommonErrorGenerator: ParsableCommand {
 
     func run() throws {
         let codes = getErrorCodes()
-
-        let apiErrors: [APIError]
-        if let errorFile {
-            apiErrors = try JSONDecoder().decode([APIError].self, from: .init(contentsOf: errorFile))
-                .filter { $0.productShortName == "PLATFORM" }
-        } else {
-            apiErrors = []
-        }
-
-        let errors = getErrorDefinitions(from: codes, apiErrors: apiErrors)
+        let apiErrors = try getAPIErrors(from: errorFile)
+        let errors = getCommonErrors(from: codes, apiErrors: apiErrors)
 
         let sourceFile = SourceFileSyntax {
-            buildCommonErrorStructDecl("TCCommonError", errors: errors)
+            buildCommonErrorStructDecl(from: errors)
 
             ExtensionDeclSyntax(#"""
                 extension TCCommonError {

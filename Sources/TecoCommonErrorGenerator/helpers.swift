@@ -1,21 +1,36 @@
 import ArgumentParser
+import Foundation
 @_implementationOnly import OrderedCollections
 
-typealias ErrorCode = String
-typealias ErrorDefinition = (code: ErrorCode, identifier: String, description: [String], solution: String?)
+struct CommonError {
+    let code: String
+    var identifier: String { self.code.lowerFirst().replacingOccurrences(of: ".", with: "_") }
+    let description: [String]
+    let solution: String?
+}
 
-func getErrorCodes() -> [ErrorCode] {
+func getErrorCodes() -> [String] {
     return OrderedSet(tcCommonErrors.keys).union(tcIntlCommonErrors.keys).sorted()
 }
 
-func getErrorDefinition(from code: ErrorCode, apiErrors: [APIError] = []) -> ErrorDefinition {
-    let desc = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }
-    precondition(desc.isEmpty == false)
-    return (code, code.lowerFirst().replacingOccurrences(of: ".", with: "_"), desc, apiErrors.first { $0.code == code }?.solution)
+func getAPIErrors(from file: URL?) throws -> [APIError] {
+    if let file {
+        return try JSONDecoder().decode([APIError].self, from: .init(contentsOf: file))
+                .filter { $0.productShortName == "PLATFORM" }
+    } else {
+        return []
+    }
 }
 
-func getErrorDefinitions(from codes: [ErrorCode], apiErrors: [APIError] = []) -> [ErrorDefinition] {
-    return codes.map { getErrorDefinition(from: $0, apiErrors: apiErrors) }
+func getCommonError(from code: String, apiErrors: [APIError] = []) -> CommonError {
+    let description = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }
+    precondition(description.isEmpty == false)
+    let solution = apiErrors.first(where: { $0.code == code })?.solution
+    return CommonError(code: code, description: description, solution: solution)
+}
+
+func getCommonErrors(from codes: [String], apiErrors: [APIError] = []) -> [CommonError] {
+    return codes.map { getCommonError(from: $0, apiErrors: apiErrors) }
 }
 
 func formatErrorSolution(_ solution: String) -> String {

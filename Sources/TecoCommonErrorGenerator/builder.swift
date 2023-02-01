@@ -2,14 +2,14 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefinition]) -> StructDeclSyntax {
+func buildCommonErrorStructDecl(from errors: [CommonError]) -> StructDeclSyntax {
     StructDeclSyntax("""
         /// Common error type returned by Tencent Cloud.
-        public struct \(qualifiedTypeName): TCServiceErrorType
+        public struct TCCommonError: TCServiceErrorType
         """) {
         EnumDeclSyntax("enum Code: String") {
-            for (code, identifier, _, _) in errors {
-                EnumCaseDeclSyntax("case \(raw: identifier) = \(literal: code)")
+            for error in errors {
+                EnumCaseDeclSyntax("case \(raw: error.identifier) = \(literal: error.code)")
             }
         }
 
@@ -44,14 +44,14 @@ func buildCommonErrorStructDecl(_ qualifiedTypeName: String, errors: [ErrorDefin
             }
             """)
 
-        for (_, identifier, description, solution) in errors {
-            let summary = description.joined(separator: "\n")
-            let solution = solution.map(formatErrorSolution)
+        for error in errors {
+            let summary = error.description.joined(separator: "\n")
+            let solution = error.solution.map(formatErrorSolution)
 
             VariableDeclSyntax("""
                 \(raw: buildDocumentation(summary: summary, discussion: solution))
-                public static var \(raw: identifier): \(raw: qualifiedTypeName) {
-                    \(raw: qualifiedTypeName)(.\(raw: identifier))
+                public static var \(raw: error.identifier): TCCommonError {
+                    TCCommonError(.\(raw: error.identifier))
                 }
                 """)
         }
