@@ -16,7 +16,7 @@ struct TecoPackageGenerator: ParsableCommand {
     var serviceGenerator: URL?
 
     @Option(name: .long)
-    var tecoCoreRequirement: String = #".branch("main")"#
+    var tecoCoreRequirement: String = #".upToNextMinor(from: "0.4.0")"#
 
     func run() throws {
         var targets: [(service: String, version: String)] = []
