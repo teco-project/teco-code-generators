@@ -2,16 +2,14 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-typealias Deprecation = (deprecated: Bool, message: String?)
-
-private func buildActionAttributeList(discardableResult: Bool, deprecation: Deprecation) -> AttributeListSyntax {
+private func buildActionAttributeList(for action: APIModel.Action, discardableResult: Bool) -> AttributeListSyntax {
     AttributeListSyntax {
-        if deprecation.deprecated {
-            if let message = deprecation.message {
-                AttributeSyntax("@available(*, deprecated, message: \(literal: message))")
+        if let availability = action.availability {
+            if let message = action.deprecationMessage {
+                AttributeSyntax("@available(*, \(raw: availability), message: \(literal: message))")
                     .withTrailingTrivia(.newline)
             } else {
-                AttributeSyntax("@available(*, deprecated)").withTrailingTrivia(.newline)
+                AttributeSyntax("@available(*, \(raw: availability))").withTrailingTrivia(.newline)
             }
         }
         AttributeSyntax("@inlinable")
@@ -24,7 +22,7 @@ private func buildActionAttributeList(discardableResult: Bool, deprecation: Depr
 func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(discardableResult: discardableResult, deprecation: metadata.deprecation))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
             self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)
         }
@@ -34,7 +32,7 @@ func buildActionDecl(for action: String, metadata: APIModel.Action, discardableR
 func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(discardableResult: discardableResult, deprecation: metadata.deprecation))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
             try await self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop).get()
         }
@@ -44,7 +42,7 @@ func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discard
 func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(discardableResult: discardableResult, deprecation: metadata.deprecation))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
             self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), region: region, logger: logger, on: eventLoop)
         }
@@ -54,13 +52,9 @@ func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inpu
 func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(discardableResult: discardableResult, deprecation: metadata.deprecation))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
             try await self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), region: region, logger: logger, on: eventLoop)
         }
         """)
-}
-
-extension APIModel.Action {
-    fileprivate var deprecation: Deprecation { (self.deprecated, self.deprecationMessage) }
 }

@@ -8,27 +8,53 @@ struct APIModel: Codable {
 
     struct Action: Codable {
         let name: String
-        let document: String
+        private let _document: String
         let input: String
         let output: String
-        let status: String?
+        private let _status: Status?
 
-        var deprecated: Bool {
+        var status: Status { self._status ?? .online }
+        var availability: String? {
             switch self.status {
-            case .none, "online": return false
-            case "deprecated": return true
-            default: fatalError("Unexpected action status: \(status!)")
+            case .online:
+                return nil
+            case .deprecated:
+                return "deprecated"
+            case .offline:
+                return "unavailable"
+            }
+        }
+
+        var document: String {
+            if let deprecationMessage {
+                return self._document.dropFirst(deprecationMessage.count).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                return self._document.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
 
         var deprecationMessage: String? {
-            guard self.deprecated else { return nil }
+            guard self.status != .online else { return nil }
             if #available(macOS 13, *) {
-                return self.document.split(separator: "/n/n").first.map(String.init)
+                return self._document.split(separator: "\n\n").first.map(String.init)
             } else {
                 // message may be stripped since this platform doesn't support Regex...
-                return self.document.split(whereSeparator: \.isNewline).first.map(String.init)
+                return self._document.split(whereSeparator: \.isNewline).first.map(String.init)
             }
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case name
+            case _document = "document"
+            case input
+            case output
+            case _status = "status"
+        }
+
+        enum Status: String, Codable {
+            case online
+            case deprecated
+            case offline
         }
     }
 
