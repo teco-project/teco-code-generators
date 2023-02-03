@@ -7,7 +7,7 @@ import TecoCodeGeneratorCommons
 @main
 struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    var serviceManifestDir: URL
+    var modelDir: URL
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var packageDir: URL
@@ -21,7 +21,10 @@ struct TecoPackageGenerator: ParsableCommand {
     func run() throws {
         var targets: [(service: String, version: String)] = []
 
-        let serviceDirectories = try FileManager.default.contentsOfDirectory(at: serviceManifestDir, includingPropertiesForKeys: nil)
+        let serviceDirectories = try FileManager.default.contentsOfDirectory(
+            at: modelDir.appendingPathComponent("services"),
+            includingPropertiesForKeys: nil
+        )
 
         if serviceGenerator != nil {
             try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
@@ -50,9 +53,14 @@ struct TecoPackageGenerator: ParsableCommand {
                     process.executableURL = serviceGenerator
                     process.arguments = [
                         "--source=\(manifestJSON.path)",
-                        "--error-file=\(serviceManifestDir.deletingLastPathComponent().path)/error-codes.json",
                         "--output-dir=\(sourceDirectory.path)",
                     ]
+
+                    let errorFilePath = modelDir.appendingPathComponent("error-codes.json")
+                    if FileManager().isReadableFile(atPath: errorFilePath.path) {
+                        process.arguments?.append("--error-file=\(errorFilePath.path)")
+                    }
+
                     process.terminationHandler = { process in
                         if process.terminationStatus != 0 {
                             print(process.arguments ?? [], process.terminationReason)
