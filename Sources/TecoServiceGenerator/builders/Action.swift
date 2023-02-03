@@ -19,12 +19,21 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
     }
 }
 
+private func buildExecuteExpr(for action: String) -> ExprSyntax {
+    ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
+}
+
+private func buildInputExpr(for type: String, members: [APIObject.Member]) -> FunctionCallExprSyntax {
+    let parameters = members.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", ")
+    return FunctionCallExprSyntax("\(raw: type)(\(raw: parameters))")
+}
+
 func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)
+            \(buildExecuteExpr(for: action))
         }
         """)
 }
@@ -34,7 +43,7 @@ func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discard
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            try await self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop).get()
+            try await \(buildExecuteExpr(for: action)).get()
         }
         """)
 }
@@ -44,7 +53,8 @@ func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inpu
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), region: region, logger: logger, on: eventLoop)
+            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
+            return \(buildExecuteExpr(for: action))
         }
         """)
 }
@@ -54,7 +64,8 @@ func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action,
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(raw: initializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            try await self.\(raw: action.lowerFirst())(\(raw: metadata.input)(\(raw: inputMembers.map({ "\($0.identifier): \($0.escapedIdentifier)" }).joined(separator: ", "))), region: region, logger: logger, on: eventLoop)
+            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
+            return try await \(buildExecuteExpr(for: action)).get()
         }
         """)
 }
