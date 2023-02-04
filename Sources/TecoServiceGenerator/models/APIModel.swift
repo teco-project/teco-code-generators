@@ -18,9 +18,9 @@ struct APIModel: Codable {
             switch self.status {
             case .online:
                 return nil
-            case .deprecated:
-                return "deprecated"
             case .offline:
+                return "deprecated"
+            case .deprecated:
                 return "unavailable"
             }
         }
@@ -53,8 +53,8 @@ struct APIModel: Codable {
 
         enum Status: String, Codable {
             case online
-            case deprecated
             case offline
+            case deprecated
         }
     }
 
