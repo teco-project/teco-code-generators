@@ -81,5 +81,11 @@ let package = Package(
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
             ]),
+        .testTarget(
+            name: "TecoDateWrapperGeneratorTests",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorTestHelpers"),
+                .byName(name: "TecoDateWrapperGenerator"),
+            ]),
     ]
 )
