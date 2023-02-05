@@ -76,5 +76,10 @@ let package = Package(
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
             ]),
+        .target(
+            name: "TecoCodeGeneratorTestHelpers",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorCommons"),
+            ]),
     ]
 )
