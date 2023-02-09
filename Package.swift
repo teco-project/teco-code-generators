@@ -93,5 +93,11 @@ let package = Package(
                 .byName(name: "TecoCodeGeneratorTestHelpers"),
                 .byName(name: "TecoCommonErrorGenerator"),
             ]),
+        .testTarget(
+            name: "TecoPackageGeneratorTests",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorTestHelpers"),
+                .byName(name: "TecoPackageGenerator"),
+            ]),
     ]
 )
