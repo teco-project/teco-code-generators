@@ -45,11 +45,8 @@ func buildCommonErrorStructDecl(from errors: [CommonError]) -> StructDeclSyntax 
             """)
 
         for error in errors {
-            let summary = error.description.joined(separator: "\n")
-            let solution = error.solution.map(formatErrorSolution)
-
             VariableDeclSyntax("""
-                \(raw: buildDocumentation(summary: summary, discussion: solution))
+                \(raw: buildDocumentation(summary: error.description, discussion: error.solution))
                 public static var \(raw: error.identifier): TCCommonError {
                     TCCommonError(.\(raw: error.identifier))
                 }

@@ -6,7 +6,7 @@ func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool 
     precondition(names.isEmpty == false)
     let valueExpr = FunctionCallExprSyntax(callee: ExprSyntax("Region")) {
         TupleExprElementSyntax(label: "id", expression: ExprSyntax("\(literal: id)"))
-        TupleExprElementSyntax(label: "localizedNames", expression: ExprSyntax("\(literal: Array(names))"))
+        TupleExprElementSyntax(label: "localized", expression: ExprSyntax("\(literal: Array(names))"))
     }
     return ArrayElementSyntax(expression: valueExpr, trailingComma: trailingComma ? .commaToken() : nil)
 }

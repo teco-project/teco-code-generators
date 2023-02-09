@@ -13,9 +13,8 @@ struct TecoCommonErrorGenerator: ParsableCommand {
     var errorFile: URL?
 
     func run() throws {
-        let codes = getErrorCodes()
         let apiErrors = try getAPIErrors(from: errorFile)
-        let errors = getCommonErrors(from: codes, apiErrors: apiErrors)
+        let errors = getCommonErrors(with: apiErrors)
 
         let sourceFile = SourceFileSyntax {
             buildCommonErrorStructDecl(from: errors)

@@ -1,4 +1,7 @@
-extension Region {
+struct Region: Hashable {
+    let id: String
+    let localizedNames: [String]
+
     var description: String { self.localizedNames.joined(separator: " / ") }
     var identifier: String { self.id.replacingOccurrences(of: "-", with: "_") }
     var kind: String? {
@@ -9,6 +12,11 @@ extension Region {
             return "internal"
         }
         return nil
+    }
+    
+    init(id: String, localized: [String]) {
+        self.id = id
+        self.localizedNames = localized
     }
 }
 

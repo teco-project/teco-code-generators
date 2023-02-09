@@ -1,5 +1,7 @@
+@_implementationOnly import OrderedCollections
+
 // https://cloud.tencent.com/document/product/213/30435#.E5.85.AC.E5.85.B1.E9.94.99.E8.AF.AF.E7.A0.81
-let tcCommonErrors: [String : String] = [
+private let tcCommonErrors: [String : String] = [
     "ActionOffline": "接口已下线。",
     "AuthFailure.InvalidAuthorization": "请求头部的`Authorization`不符合腾讯云标准。",
     "AuthFailure.InvalidSecretId": "密钥非法（不是云API密钥类型）。",
@@ -41,7 +43,7 @@ let tcCommonErrors: [String : String] = [
 ]
 
 // https://www.tencentcloud.com/document/product/213/33281#common-error-codes
-let tcIntlCommonErrors: [String : String] = [
+private let tcIntlCommonErrors: [String : String] = [
     "ActionOffline": "This API has been deprecated.",
     "AuthFailure.InvalidAuthorization": "`Authorization` in the request header is invalid.",
     "AuthFailure.InvalidSecretId": "Invalid key (not a TencentCloud API key type).",
@@ -82,32 +84,14 @@ let tcIntlCommonErrors: [String : String] = [
     "UnsupportedRegion": "API does not support the requested region.",
 ]
 
-struct APIError: Codable {
-    let productShortName: String
-    let productVersion: String
-    let code: String
-    let description: String?
-    private let _solution: String
-    let productCNName: String?
+private func getCommonError(from code: String, apiErrors: [APIError] = []) -> CommonError {
+    let description = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }.joined(separator: "\n")
+    precondition(description.isEmpty == false)
+    let solution = apiErrors.first(where: { $0.code == code })?.solution.map(formatErrorSolution)
+    return CommonError(code: code, description: description, solution: solution)
+}
 
-    var solution: String? {
-        switch self._solution {
-        case "无", "暂无", "占位符":
-            return nil
-        case "业务正在更新中，请您耐心等待。":
-            return nil
-        default:
-            return self._solution.trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacingOccurrences(of: "\r\n", with: "\n")
-        }
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case productShortName = "productName"
-        case productVersion
-        case code
-        case description
-        case _solution = "solution"
-        case productCNName
-    }
+func getCommonErrors(with apiErrors: [APIError] = []) -> [CommonError] {
+    let codes = OrderedSet(tcCommonErrors.keys).union(tcIntlCommonErrors.keys).sorted()
+    return codes.map { getCommonError(from: $0, apiErrors: apiErrors) }
 }

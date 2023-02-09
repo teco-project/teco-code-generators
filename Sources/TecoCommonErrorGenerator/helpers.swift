@@ -1,36 +1,45 @@
 import ArgumentParser
 import Foundation
-@_implementationOnly import OrderedCollections
 
 struct CommonError {
     let code: String
-    var identifier: String { self.code.lowerFirst().replacingOccurrences(of: ".", with: "_") }
-    let description: [String]
+    let description: String
     let solution: String?
+
+    var identifier: String { self.code.lowerFirst().replacingOccurrences(of: ".", with: "_") }
 }
 
-func getErrorCodes() -> [String] {
-    return OrderedSet(tcCommonErrors.keys).union(tcIntlCommonErrors.keys).sorted()
+struct APIError: Codable {
+    let product: String
+    let code: String
+    private let _solution: String
+
+    var solution: String? {
+        switch self._solution {
+        case "无", "暂无", "占位符":
+            return nil
+        case "业务正在更新中，请您耐心等待。":
+            return nil
+        default:
+            return self._solution.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\r\n", with: "\n")
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case product = "productName"
+        case code
+        case _solution = "solution"
+    }
 }
 
 func getAPIErrors(from file: URL?) throws -> [APIError] {
     if let file {
         return try JSONDecoder().decode([APIError].self, from: .init(contentsOf: file))
-                .filter { $0.productShortName == "PLATFORM" }
+                .filter { $0.product == "PLATFORM" }
     } else {
         return []
     }
-}
-
-func getCommonError(from code: String, apiErrors: [APIError] = []) -> CommonError {
-    let description = [tcIntlCommonErrors[code], tcCommonErrors[code]].compactMap { $0 }
-    precondition(description.isEmpty == false)
-    let solution = apiErrors.first(where: { $0.code == code })?.solution
-    return CommonError(code: code, description: description, solution: solution)
-}
-
-func getCommonErrors(from codes: [String], apiErrors: [APIError] = []) -> [CommonError] {
-    return codes.map { getCommonError(from: $0, apiErrors: apiErrors) }
 }
 
 func formatErrorSolution(_ solution: String) -> String {
