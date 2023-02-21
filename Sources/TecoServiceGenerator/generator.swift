@@ -1,12 +1,14 @@
 import ArgumentParser
+import class Foundation.JSONDecoder
 @_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoServiceGenerator: ParsableCommand {
+struct TecoServiceGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var source: URL
     
@@ -16,7 +18,10 @@ struct TecoServiceGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var outputDir: URL
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         // Check for Regex support
         if #unavailable(macOS 13) {
             print("warning: Documentation may look uglier because the platform doesn't support Regex...")
@@ -33,6 +38,8 @@ struct TecoServiceGenerator: ParsableCommand {
         } else {
             errors = []
         }
+
+        try ensureDirectory(at: outputDir, empty: true)
 
         // MARK: Verify data model
         
@@ -58,19 +65,6 @@ struct TecoServiceGenerator: ParsableCommand {
             models.sort()
         }
 
-        // MARK: Clean up output directory
-
-        do {
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: outputDir.path, isDirectory: &isDirectory) {
-                guard isDirectory.boolValue == true else {
-                    fatalError("Unexpectedly find file at \(outputDir.path)!")
-                }
-                try FileManager.default.removeItem(at: outputDir)
-            }
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
-        }
-
         // MARK: Generate client source
 
         do {
@@ -78,7 +72,7 @@ struct TecoServiceGenerator: ParsableCommand {
                 ImportDeclSyntax("@_exported import TecoCore")
                 buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                 buildServicePatchSupportDecl(for: qualifiedName)
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("client.swift"))
         }
@@ -116,7 +110,7 @@ struct TecoServiceGenerator: ParsableCommand {
                         }
                     }
                 }
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("models.swift"))
         }
@@ -125,7 +119,7 @@ struct TecoServiceGenerator: ParsableCommand {
         
         do {
             let outputDir = outputDir.appendingPathComponent("actions", isDirectory: true)
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: false)
+            try ensureDirectory(at: outputDir)
 
             for (action, metadata) in service.actions {
                 guard let input = service.objects[metadata.input], input.type == .object,
@@ -196,7 +190,7 @@ struct TecoServiceGenerator: ParsableCommand {
                         buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                         buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                     }
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: outputDir.appendingPathComponent("\(action).swift"))
             }
@@ -204,18 +198,18 @@ struct TecoServiceGenerator: ParsableCommand {
         
         if !errors.isEmpty {
             // MARK: Generate base error source
-            
+
             let baseErrorName = "\(qualifiedName)Error"
             let errorOutputDir = outputDir.appendingPathComponent("errors", isDirectory: true)
-            try FileManager.default.createDirectory(at: errorOutputDir, withIntermediateDirectories: false)
-            
+            try ensureDirectory(at: errorOutputDir)
+
             let errorDomains = getErrorDomains(from: errors)
             do {
                 let errorType = "TC\(baseErrorName)"
                 let sourceFile = SourceFileSyntax {
                     buildServiceErrorTypeDecl(qualifiedName)
                     buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
             }
@@ -228,7 +222,7 @@ struct TecoServiceGenerator: ParsableCommand {
                     ExtensionDeclSyntax("extension TC\(baseErrorName)") {
                         buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
                     }
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))
             }

@@ -1,5 +1,6 @@
 import ArgumentParser
-import Foundation
+import TecoCodeGeneratorCommons
+import class Foundation.JSONDecoder
 
 struct CommonError {
     let code: String

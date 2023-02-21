@@ -1,11 +1,13 @@
 import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
+import class Foundation.Process
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoPackageGenerator: ParsableCommand {
+struct TecoPackageGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var modelDir: URL
 
@@ -18,25 +20,25 @@ struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .long)
     var tecoCoreRequirement: String = #".upToNextMinor(from: "0.4.0")"#
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         var targets: [(service: String, version: String)] = []
 
-        let serviceDirectories = try FileManager.default.contentsOfDirectory(
-            at: modelDir.appendingPathComponent("services"),
-            includingPropertiesForKeys: nil
-        )
+        let serviceDirectories = try contentsOfDirectory(at: modelDir.appendingPathComponent("services"), subdirectoryOnly: true)
 
         if serviceGenerator != nil {
-            try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
+            try ensureDirectory(at: packageDir.appendingPathComponent("Sources"), empty: true)
         }
 
         var generatorProcesses: [Process] = []
 
-        for service in serviceDirectories where FileManager.default.isDirectory(service) {
-            let versionedDirectories = try FileManager.default.contentsOfDirectory(at: service, includingPropertiesForKeys: nil)
-            for version in versionedDirectories where FileManager.default.isDirectory(version) {
+        for service in serviceDirectories {
+            let versionedDirectories = try contentsOfDirectory(at: service, subdirectoryOnly: true)
+            for version in versionedDirectories {
                 let manifestJSON = version.appendingPathComponent("api.json")
-                guard FileManager().isReadableFile(atPath: manifestJSON.path) else {
+                guard fileExists(at: manifestJSON) else {
                     fatalError("api.json not found in \(version.path)")
                 }
                 targets.append((service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst()))
@@ -57,7 +59,7 @@ struct TecoPackageGenerator: ParsableCommand {
                     ]
 
                     let errorFilePath = modelDir.appendingPathComponent("error-codes.json")
-                    if FileManager().isReadableFile(atPath: errorFilePath.path) {
+                    if fileExists(at: errorFilePath) {
                         process.arguments?.append("--error-file=\(errorFilePath.path)")
                     }
 
@@ -81,7 +83,7 @@ struct TecoPackageGenerator: ParsableCommand {
                 //
                 // This source file is part of the Teco open source project
                 //
-                // Copyright (c) 2022-2023 the Teco project authors
+                // Copyright (c) \(raw: GeneratorContext.developingYears) the Teco project authors
                 // Licensed under Apache License v2.0
                 //
                 // See LICENSE.txt for license information

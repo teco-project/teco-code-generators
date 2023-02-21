@@ -1,18 +1,22 @@
 import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoCommonErrorGenerator: ParsableCommand {
+struct TecoCommonErrorGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var errorFile: URL?
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         let apiErrors = try getAPIErrors(from: errorFile)
         let errors = getCommonErrors(with: apiErrors)
 
@@ -27,7 +31,7 @@ struct TecoCommonErrorGenerator: ParsableCommand {
                     }
                 }
                 """#)
-        }.withCopyrightHeader(generator: Self.self)
+        }.withCopyrightHeader()
 
         try sourceFile.save(to: self.output)
     }

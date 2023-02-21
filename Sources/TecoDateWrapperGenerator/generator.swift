@@ -1,15 +1,19 @@
 import ArgumentParser
-import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoDateWrapperGenerator: ParsableCommand {
+struct TecoDateWrapperGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var outputDir: URL
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         for encoding in DateEncoding.all {
             let sourceFile = SourceFileSyntax {
                 buildImportDecls(for: encoding)
@@ -55,7 +59,7 @@ struct TecoDateWrapperGenerator: ParsableCommand {
 
                     buildDateFormatterDecl(for: encoding)
                 }
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("\(encoding.rawValue).swift"))
         }

@@ -1,19 +1,23 @@
 import ArgumentParser
-import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import TecoCore
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoRegionDataGenerator: AsyncParsableCommand {
+struct TecoRegionDataGenerator: TecoCodeGenerator {
+    static let startingYear = 2023
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
     @Option(name: .long)
     var product: String = "vpc"
 
-    func run() async throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() async throws {
         let client = RegionService()
         defer { try? client.client.syncShutdown() }
 
