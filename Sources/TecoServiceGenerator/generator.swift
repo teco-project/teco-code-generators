@@ -6,7 +6,7 @@ import Foundation
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoServiceGenerator: ParsableCommand {
+struct TecoServiceGenerator: TecoCodeGenerator {
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var source: URL
     
@@ -16,7 +16,10 @@ struct TecoServiceGenerator: ParsableCommand {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var outputDir: URL
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         // Check for Regex support
         if #unavailable(macOS 13) {
             print("warning: Documentation may look uglier because the platform doesn't support Regex...")

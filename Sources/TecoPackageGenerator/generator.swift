@@ -5,7 +5,7 @@ import Foundation
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoPackageGenerator: ParsableCommand {
+struct TecoPackageGenerator: TecoCodeGenerator {
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var modelDir: URL
 
@@ -18,7 +18,10 @@ struct TecoPackageGenerator: ParsableCommand {
     @Option(name: .long)
     var tecoCoreRequirement: String = #".upToNextMinor(from: "0.4.0")"#
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         var targets: [(service: String, version: String)] = []
 
         let serviceDirectories = try FileManager.default.contentsOfDirectory(

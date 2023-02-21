@@ -78,6 +78,9 @@ extension SourceFileSyntax {
             throw ExitCode(100)
         }
 
+        // Skip formatting and writing to disk in dry-run mode
+        guard !Context.dryRun else { return }
+
         // Work around styling issues regarding blank lines.
         var sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
 

@@ -1,14 +1,16 @@
-import Foundation
 import ArgumentParser
 import SwiftSyntax
 import TecoCodeGeneratorCommons
 
 @main
-struct TecoRegionGenerator: ParsableCommand {
+struct TecoRegionGenerator: TecoCodeGenerator {
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
-    func run() throws {
+    @Flag
+    var dryRun: Bool = false
+
+    func generate() throws {
         let sourceFile = SourceFileSyntax {
             StructDeclSyntax("""
                 /// Tencent Cloud region identified by Region ID.
