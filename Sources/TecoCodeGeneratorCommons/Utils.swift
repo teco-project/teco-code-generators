@@ -32,11 +32,28 @@ extension String {
     }
 }
 
-extension FileManager {
-    public func isDirectory(_ url: URL) -> Bool {
-        var isDirectory: ObjCBool = false
-        let isFile = self.fileExists(atPath: url.path, isDirectory: &isDirectory)
-        return isFile && isDirectory.boolValue
+extension TecoCodeGenerator {
+    public func ensureDirectory(at url: URL, empty: Bool = false) throws {
+        if Context.dryRun { return }
+        if fileExists(at: url) {
+            precondition(isDirectory(url), "Unexpectedly find file at \(url.path)")
+            if try !empty || contentsOfDirectory(at: url).isEmpty { return }
+            try FileManager.default.removeItem(at: url)
+        }
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+
+    public func contentsOfDirectory(at url: URL, subdirectoryOnly: Bool = false) throws -> [URL] {
+        let result = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+        return subdirectoryOnly ? result.filter(isDirectory) : result
+    }
+
+    public func fileExists(at url: URL, executable: Bool = false) -> Bool {
+        if executable {
+            return FileManager.default.isExecutableFile(atPath: url.path)
+        } else {
+            return FileManager.default.isReadableFile(atPath: url.path)
+        }
     }
 }
 
@@ -79,7 +96,7 @@ extension SourceFileSyntax {
         }
 
         // Skip formatting and writing to disk in dry-run mode
-        guard !Context.dryRun else { return }
+        if Context.dryRun { return }
 
         // Work around styling issues regarding blank lines.
         var sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
@@ -127,4 +144,10 @@ private func buildDocumentation(_ document: String) -> String {
         }
         .map { $0.isEmpty ? "///" : "/// \($0)" }
         .joined(separator: "\n")
+}
+
+private func isDirectory(_ url: URL) -> Bool {
+    var isDirectory: ObjCBool = false
+    let isFile = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+    return isFile && isDirectory.boolValue
 }

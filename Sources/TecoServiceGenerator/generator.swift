@@ -1,8 +1,8 @@
 import ArgumentParser
+import class Foundation.JSONDecoder
 @_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
 import TecoCodeGeneratorCommons
 
 @main
@@ -37,6 +37,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
             errors = []
         }
 
+        try ensureDirectory(at: outputDir, empty: true)
+
         // MARK: Verify data model
         
         var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: service.objects)
@@ -59,19 +61,6 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             // Sort models.
             models.sort()
-        }
-
-        // MARK: Clean up output directory
-
-        do {
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: outputDir.path, isDirectory: &isDirectory) {
-                guard isDirectory.boolValue == true else {
-                    fatalError("Unexpectedly find file at \(outputDir.path)!")
-                }
-                try FileManager.default.removeItem(at: outputDir)
-            }
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
         }
 
         // MARK: Generate client source
@@ -128,7 +117,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
         
         do {
             let outputDir = outputDir.appendingPathComponent("actions", isDirectory: true)
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: false)
+            try ensureDirectory(at: outputDir)
 
             for (action, metadata) in service.actions {
                 guard let input = service.objects[metadata.input], input.type == .object,
@@ -207,11 +196,11 @@ struct TecoServiceGenerator: TecoCodeGenerator {
         
         if !errors.isEmpty {
             // MARK: Generate base error source
-            
+
             let baseErrorName = "\(qualifiedName)Error"
             let errorOutputDir = outputDir.appendingPathComponent("errors", isDirectory: true)
-            try FileManager.default.createDirectory(at: errorOutputDir, withIntermediateDirectories: false)
-            
+            try ensureDirectory(at: errorOutputDir)
+
             let errorDomains = getErrorDomains(from: errors)
             do {
                 let errorType = "TC\(baseErrorName)"

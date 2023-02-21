@@ -1,7 +1,7 @@
 import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import Foundation
+import class Foundation.Process
 import TecoCodeGeneratorCommons
 
 @main
@@ -24,22 +24,19 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     func generate() throws {
         var targets: [(service: String, version: String)] = []
 
-        let serviceDirectories = try FileManager.default.contentsOfDirectory(
-            at: modelDir.appendingPathComponent("services"),
-            includingPropertiesForKeys: nil
-        )
+        let serviceDirectories = try contentsOfDirectory(at: modelDir.appendingPathComponent("services"), subdirectoryOnly: true)
 
         if serviceGenerator != nil {
-            try FileManager.default.removeItem(at: packageDir.appendingPathComponent("Sources"))
+            try ensureDirectory(at: packageDir.appendingPathComponent("Sources"), empty: true)
         }
 
         var generatorProcesses: [Process] = []
 
-        for service in serviceDirectories where FileManager.default.isDirectory(service) {
-            let versionedDirectories = try FileManager.default.contentsOfDirectory(at: service, includingPropertiesForKeys: nil)
-            for version in versionedDirectories where FileManager.default.isDirectory(version) {
+        for service in serviceDirectories {
+            let versionedDirectories = try contentsOfDirectory(at: service, subdirectoryOnly: true)
+            for version in versionedDirectories {
                 let manifestJSON = version.appendingPathComponent("api.json")
-                guard FileManager().isReadableFile(atPath: manifestJSON.path) else {
+                guard fileExists(at: manifestJSON) else {
                     fatalError("api.json not found in \(version.path)")
                 }
                 targets.append((service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst()))
@@ -60,7 +57,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                     ]
 
                     let errorFilePath = modelDir.appendingPathComponent("error-codes.json")
-                    if FileManager().isReadableFile(atPath: errorFilePath.path) {
+                    if fileExists(at: errorFilePath) {
                         process.arguments?.append("--error-file=\(errorFilePath.path)")
                     }
 
