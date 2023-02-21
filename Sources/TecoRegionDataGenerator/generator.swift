@@ -6,6 +6,8 @@ import TecoCodeGeneratorCommons
 
 @main
 struct TecoRegionDataGenerator: TecoCodeGenerator {
+    static let startingYear = 2023
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 

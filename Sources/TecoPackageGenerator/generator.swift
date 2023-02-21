@@ -6,6 +6,8 @@ import TecoCodeGeneratorCommons
 
 @main
 struct TecoPackageGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var modelDir: URL
 
@@ -81,7 +83,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                 //
                 // This source file is part of the Teco open source project
                 //
-                // Copyright (c) 2022-2023 the Teco project authors
+                // Copyright (c) \(raw: GeneratorContext.developingYears) the Teco project authors
                 // Licensed under Apache License v2.0
                 //
                 // See LICENSE.txt for license information

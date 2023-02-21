@@ -5,6 +5,8 @@ import TecoCodeGeneratorCommons
 
 @main
 struct TecoCommonErrorGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
     var output: URL
 
@@ -29,7 +31,7 @@ struct TecoCommonErrorGenerator: TecoCodeGenerator {
                     }
                 }
                 """#)
-        }.withCopyrightHeader(generator: Self.self)
+        }.withCopyrightHeader()
 
         try sourceFile.save(to: self.output)
     }

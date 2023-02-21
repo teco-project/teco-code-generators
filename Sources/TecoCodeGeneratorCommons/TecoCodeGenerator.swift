@@ -1,13 +1,22 @@
 import ArgumentParser
+import struct Foundation.Calendar
+import struct Foundation.Date
 import class Foundation.FileManager
 @_exported import struct Foundation.URL
 
-struct Context {
+public struct GeneratorContext {
     @TaskLocal
-    static var dryRun: Bool = false
+    public static var generator: String = "TecoCodeGenerator"
+
+    @TaskLocal
+    public static var developingYears: String = "\(Calendar.current.component(.year, from: Date()))"
+
+    @TaskLocal
+    public static var dryRun: Bool = false
 }
 
 public protocol TecoCodeGenerator: AsyncParsableCommand {
+    static var startingYear: Int { get }
     var dryRun: Bool { get }
 
     func generate() async throws
@@ -15,6 +24,24 @@ public protocol TecoCodeGenerator: AsyncParsableCommand {
 
 extension TecoCodeGenerator {
     public func run() async throws {
-        try await Context.$dryRun.withValue(dryRun, operation: generate)
+        try await GeneratorContext.$generator.withValue("\(Self.self)") {
+            try await GeneratorContext.$developingYears.withValue(Self.developingYears) {
+                try await GeneratorContext.$dryRun.withValue(dryRun, operation: generate)
+            }
+        }
+    }
+
+    private static var developingYears: String {
+        if startingYear == Date().year {
+            return "\(startingYear)"
+        } else {
+            return "\(startingYear)-\(Date().year)"
+        }
+    }
+}
+
+extension Date {
+    fileprivate var year: Int {
+        Calendar.current.component(.year, from: self)
     }
 }

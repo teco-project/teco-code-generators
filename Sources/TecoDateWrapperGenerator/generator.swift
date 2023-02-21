@@ -5,6 +5,8 @@ import TecoCodeGeneratorCommons
 
 @main
 struct TecoDateWrapperGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
     var outputDir: URL
 
@@ -57,7 +59,7 @@ struct TecoDateWrapperGenerator: TecoCodeGenerator {
 
                     buildDateFormatterDecl(for: encoding)
                 }
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("\(encoding.rawValue).swift"))
         }

@@ -7,6 +7,8 @@ import TecoCodeGeneratorCommons
 
 @main
 struct TecoServiceGenerator: TecoCodeGenerator {
+    static let startingYear = 2022
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var source: URL
     
@@ -70,7 +72,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 ImportDeclSyntax("@_exported import TecoCore")
                 buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                 buildServicePatchSupportDecl(for: qualifiedName)
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("client.swift"))
         }
@@ -108,7 +110,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         }
                     }
                 }
-            }.withCopyrightHeader(generator: Self.self)
+            }.withCopyrightHeader()
 
             try sourceFile.save(to: outputDir.appendingPathComponent("models.swift"))
         }
@@ -188,7 +190,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                         buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                     }
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: outputDir.appendingPathComponent("\(action).swift"))
             }
@@ -207,7 +209,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 let sourceFile = SourceFileSyntax {
                     buildServiceErrorTypeDecl(qualifiedName)
                     buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
             }
@@ -220,7 +222,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                     ExtensionDeclSyntax("extension TC\(baseErrorName)") {
                         buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
                     }
-                }.withCopyrightHeader(generator: Self.self)
+                }.withCopyrightHeader()
                 
                 try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))
             }
