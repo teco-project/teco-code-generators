@@ -22,8 +22,8 @@ func buildRequestModelDecl(for input: String, metadata: APIObject) -> StructDecl
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject, service: APIModel) -> StructDeclSyntax {
-    let itemsField = getItemsField(for: metadata, service: service)
+func buildResponseModelDecl(for output: String, metadata: APIObject) -> StructDeclSyntax {
+    let itemsField = getItemsField(for: metadata)
 
     return StructDeclSyntax("""
         \(buildDocumentation(summary: metadata.document))
@@ -43,7 +43,7 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, service: AP
         if let itemsField {
             buildGetItemsDecl(with: itemsField)
 
-            if let field = getTotalCountField(for: metadata, service: service) {
+            if let field = getTotalCountField(for: metadata) {
                 buildGetTotalCountDecl(with: field)
             }
         }

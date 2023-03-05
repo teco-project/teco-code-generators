@@ -10,19 +10,17 @@ func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
         """)
 }
 
-func getItemsField(for output: APIObject, service: APIModel) -> APIObject.Field? {
-    output.getFieldExactly({ $0.type == .list }, service: service)
+func getItemsField(for output: APIObject) -> APIObject.Field? {
+    output.getFieldExactly({ $0.type == .list })
 }
 
-func getTotalCountField(for output: APIObject, service: APIModel) -> APIObject.Field? {
+func getTotalCountField(for output: APIObject) -> APIObject.Field? {
     // The output contains total count field.
-    if let field = output.getFieldExactly({
-        ["TotalCount", "TotalCnt", "TotalNum", "TotalElements", "Total"].contains($0.name) && $0.type == .int
-    }, service: service) {
+    if let field = output.getFieldExactly({ ["TotalCount", "TotalCnt", "TotalNum", "TotalElements", "Total"].contains($0.name) && $0.type == .int }) {
         return field
     }
     // The output contains a single integer, which we assume to be total count.
-    if let field = output.getFieldExactly({ $0.type == .int }, service: service),
+    if let field = output.getFieldExactly({ $0.type == .int }),
        case let name = field.metadata.name,
        name == "Count" || name.hasPrefix("Total") || name.hasSuffix("Num")
     {

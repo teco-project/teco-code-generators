@@ -3,6 +3,11 @@ import TecoCodeGeneratorCommons
 import RegexBuilder
 @_implementationOnly import OrderedCollections
 
+enum ServiceContext {
+    @TaskLocal
+    static var objects: [String : APIObject] = [:]
+}
+
 func getErrorDomain(from code: String) -> String? {
     let components = code.split(separator: ".")
     guard components.count >= 2 else {
@@ -215,12 +220,12 @@ extension APIObject.Member {
 extension APIObject {
     typealias Field = (key: String, metadata: APIObject.Member)
 
-    func getFieldExactly(_ match: (APIObject.Member) throws -> Bool, service: APIModel? = nil) rethrows -> Field? {
+    func getFieldExactly(_ match: (APIObject.Member) throws -> Bool) rethrows -> Field? {
         let (members, namespace): (_, String?) = {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
-            if members.count == 1, members[0].type == .object, let service {
-                return (service.objects[members[0].member]!.members, "\(members[0].identifier)")
+            if members.count == 1, members[0].type == .object, let model = ServiceContext.objects[members[0].member] {
+                return (model.members, "\(members[0].identifier)")
             } else {
                 return (members, nil)
             }
