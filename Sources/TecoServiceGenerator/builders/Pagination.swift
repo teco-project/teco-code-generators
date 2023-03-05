@@ -6,7 +6,7 @@ func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         /// Extract the total count from the paginated response.
         public func getItems() -> [\(raw: field.metadata.member)] {
-            self.\(raw: field.key)\(raw: field.metadata.nullable ? " ?? []" : "")
+            self.\(raw: field.key)\(raw: field.metadata.nullable || field.key.contains("?") ? " ?? []" : "")
         }
         """)
 }

@@ -45,7 +45,7 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
             if let model = ServiceContext.objects[field.metadata.member],
                let count = getTotalCountField(for: model, associative: false)
             {
-                return ("\(field.key).\(count.key)", count.metadata)
+                return ("\(field.key)\(field.metadata.optional ? "?" : "").\(count.key)", count.metadata)
             }
         }
     }
@@ -121,7 +121,7 @@ extension APIObject {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
             if members.count == 1, members[0].type == .object, let model = ServiceContext.objects[members[0].member] {
-                return (model.members, "\(members[0].identifier)")
+                return (model.members, "\(members[0].identifier)\(members[0].optional ? "?" : "")")
             } else {
                 return (members, nil)
             }
