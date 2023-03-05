@@ -57,6 +57,9 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                         "--source=\(manifestJSON.path)",
                         "--output-dir=\(sourceDirectory.path)",
                     ]
+                    if dryRun {
+                        process.arguments?.append("--dry-run")
+                    }
 
                     let errorFilePath = modelDir.appendingPathComponent("error-codes.json")
                     if fileExists(at: errorFilePath) {
