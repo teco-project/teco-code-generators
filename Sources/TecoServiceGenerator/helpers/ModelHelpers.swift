@@ -1,4 +1,22 @@
 func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forceOptional: Bool = false) -> String {
+    var type = getSwiftMemberType(for: model)
+
+    if case .list = model.type {
+        type = "[\(type)]"
+    }
+
+    if model.optional || forceOptional {
+        if !forceOptional, isInitializer, model.required {
+            // We regard required nullable fields as **required** for input and **nullable** in output,
+            // so use non-optional for initializer.
+            return type
+        }
+        type += "?"
+    }
+    return type
+}
+
+func getSwiftMemberType(for model: APIObject.Member) -> String {
     switch model.type {
     case .bool:
         precondition(model.member == "bool")
@@ -26,19 +44,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forc
     } else if type.first?.isUppercase != true {
         type = type.replacingOccurrences(of: "int", with: "Int").upperFirst()
     }
-
-    if case .list = model.type {
-        type = "[\(type)]"
-    }
-
-    if model.optional || forceOptional {
-        if !forceOptional, isInitializer, model.required {
-            // We regard required nullable fields as **required** for input and **nullable** in output,
-            // so use non-optional for initializer.
-            return type
-        }
-        type += "?"
-    }
+ 
     return type
 }
 
