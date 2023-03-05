@@ -211,3 +211,29 @@ extension APIObject.Member {
         self.identifier.swiftIdentifierEscaped()
     }
 }
+
+extension APIObject {
+    typealias Field = (key: String, metadata: APIObject.Member)
+
+    func getFieldExactly(_ match: (APIObject.Member) throws -> Bool, service: APIModel? = nil) rethrows -> Field? {
+        let (members, namespace): (_, String?) = {
+            var members = self.members
+            members.removeAll(where: { $0.name == "RequestId" })
+            if members.count == 1, members[0].type == .object, let service {
+                return (service.objects[members[0].member]!.members, "\(members[0].identifier)")
+            } else {
+                return (members, nil)
+            }
+        }()
+
+        let filtered = try members.filter(match)
+        guard filtered.count == 1, let field = filtered.first else {
+            return nil
+        }
+        if let namespace {
+            return ("\(namespace).\(field.identifier)", field)
+        } else {
+            return (field.escapedIdentifier, field)
+        }
+    }
+}
