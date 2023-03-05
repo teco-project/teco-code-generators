@@ -22,10 +22,12 @@ func buildRequestModelDecl(for input: String, metadata: APIObject) -> StructDecl
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject) -> StructDeclSyntax {
-    StructDeclSyntax("""
+func buildResponseModelDecl(for output: String, metadata: APIObject, service: APIModel) -> StructDeclSyntax {
+    let itemsField = getItemsField(for: metadata, service: service)
+
+    return StructDeclSyntax("""
         \(buildDocumentation(summary: metadata.document))
-        public struct \(output): TCResponseModel
+        public struct \(output): \(itemsField != nil  ? "TCPaginatedResponse" : "TCResponseModel")
         """) {
         let outputMembers = metadata.members
 
@@ -37,6 +39,14 @@ func buildResponseModelDecl(for output: String, metadata: APIObject) -> StructDe
         }
 
         buildModelCodingKeys(for: metadata.members)
+
+        if let itemsField {
+            buildGetItemsDecl(with: itemsField)
+
+            if let field = getTotalCountField(for: metadata, service: service) {
+                buildGetTotalCountDecl(with: field)
+            }
+        }
     }
 }
 

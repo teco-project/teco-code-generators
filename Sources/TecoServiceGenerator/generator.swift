@@ -113,13 +113,14 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 // TODO: Validate paginated APIs
                 let sourceFile = SourceFileSyntax {
                     buildDateHelpersImportDecl(for: [input, output])
+                    ImportDeclSyntax("import TecoPaginationHelpers")
 
                     let inputMembers = input.members.filter({ $0.type != .binary })
                     let discardableOutput = output.members.count == 1
 
                     ExtensionDeclSyntax("extension \(qualifiedName)") {
                         buildRequestModelDecl(for: metadata.input, metadata: input)
-                        buildResponseModelDecl(for: metadata.output, metadata: output)
+                        buildResponseModelDecl(for: metadata.output, metadata: output, service: service)
 
                         buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
                         buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)

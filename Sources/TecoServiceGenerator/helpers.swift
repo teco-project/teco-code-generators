@@ -47,7 +47,7 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
     return errorMap
 }
 
-func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> String {
+func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forceOptional: Bool = false) -> String {
     switch model.type {
     case .bool:
         precondition(model.member == "bool")
@@ -80,8 +80,8 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false) -> S
         type = "[\(type)]"
     }
 
-    if model.optional {
-        if isInitializer, model.required {
+    if model.optional || forceOptional {
+        if !forceOptional, isInitializer, model.required {
             // We regard required nullable fields as **required** for input and **nullable** in output,
             // so use non-optional for initializer.
             return type
