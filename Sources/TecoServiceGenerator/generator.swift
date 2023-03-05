@@ -112,21 +112,25 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         continue
                     }
 
-                    // TODO: Validate paginated APIs
+                    let paginationKind = getPaginationKind(input: input, output: output, service: service, action: metadata)
+                    let isPaginated = paginationKind != nil
+
                     let sourceFile = SourceFileSyntax {
                         buildDateHelpersImportDecl(for: [input, output])
-                        ImportDeclSyntax("import TecoPaginationHelpers")
-                        
+                        if isPaginated {
+                            ImportDeclSyntax("import TecoPaginationHelpers")
+                        }
+
                         let inputMembers = input.members.filter({ $0.type != .binary })
                         let discardableOutput = output.members.count == 1
-                        
+
                         ExtensionDeclSyntax("extension \(qualifiedName)") {
-                            buildRequestModelDecl(for: metadata.input, metadata: input)
-                            buildResponseModelDecl(for: metadata.output, metadata: output)
-                            
+                            buildRequestModelDecl(for: metadata.input, metadata: input, paginationKind: paginationKind, output: metadata.output, outputMetadata: output)
+                            buildResponseModelDecl(for: metadata.output, metadata: output, paginated: isPaginated)
+
                             buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
                             buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
-                            
+
                             buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
                             buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
                         }

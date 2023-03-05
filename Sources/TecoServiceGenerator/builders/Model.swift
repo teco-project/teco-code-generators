@@ -2,10 +2,10 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildRequestModelDecl(for input: String, metadata: APIObject) -> StructDeclSyntax {
+func buildRequestModelDecl(for input: String, metadata: APIObject, paginationKind: PaginationKind?, output: String, outputMetadata: APIObject) -> StructDeclSyntax {
     StructDeclSyntax("""
         \(buildDocumentation(summary: metadata.document))
-        public struct \(input): TCRequestModel
+        public struct \(input): \(paginationKind != nil ? "TCPaginatedRequest" : "TCRequestModel")
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
 
@@ -19,15 +19,17 @@ func buildRequestModelDecl(for input: String, metadata: APIObject) -> StructDecl
         buildModelInitializerDeclSyntax(with: inputMembers)
 
         buildModelCodingKeys(for: inputMembers)
+
+        if let paginationKind {
+            buildGetNextPaginatedRequestDecl(for: input, response: output, kind: paginationKind, input: metadata, output: outputMetadata)
+        }
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject) -> StructDeclSyntax {
-    let itemsField = getItemsField(for: metadata)
-
-    return StructDeclSyntax("""
+func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: Bool) -> StructDeclSyntax {
+    StructDeclSyntax("""
         \(buildDocumentation(summary: metadata.document))
-        public struct \(output): \(itemsField != nil  ? "TCPaginatedResponse" : "TCResponseModel")
+        public struct \(output): \(paginated ? "TCPaginatedResponse" : "TCResponseModel")
         """) {
         let outputMembers = metadata.members
 
@@ -40,10 +42,10 @@ func buildResponseModelDecl(for output: String, metadata: APIObject) -> StructDe
 
         buildModelCodingKeys(for: metadata.members)
 
-        if let itemsField {
+        if paginated, let itemsField = getItemsField(for: metadata) {
             buildGetItemsDecl(with: itemsField)
 
-            if let field = getTotalCountField(for: metadata) {
+            if let field = getTotalCountField(for: metadata, associative: true) {
                 buildGetTotalCountDecl(with: field)
             }
         }
