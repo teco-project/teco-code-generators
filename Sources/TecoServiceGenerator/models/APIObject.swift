@@ -5,6 +5,7 @@ struct APIObject: Codable {
     var usage: Usage?
 
     var type: `Type` { self._type ?? .object }
+    var initializable: Bool { self.usage == .in || self.usage == .both }
 
     enum CodingKeys: String, CodingKey {
         case document

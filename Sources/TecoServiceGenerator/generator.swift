@@ -85,29 +85,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                 ExtensionDeclSyntax("extension \(qualifiedName)") {
                     for (model, metadata) in models {
-                        StructDeclSyntax("""
-                                \(buildDocumentation(summary: metadata.document))
-                                public struct \(model): \(metadata.protocols.joined(separator: ", "))
-                                """) {
-                            for member in metadata.members {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
-
-                            if metadata.protocols.contains("TCInputModel") {
-                                buildModelInitializerDeclSyntax(with: metadata.members)
-                            }
-
-                            if !metadata.members.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in metadata.members {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
-                        }
+                        buildGeneralModelDecl(for: model, metadata: metadata)
                     }
                 }
             }.withCopyrightHeader()
@@ -132,70 +110,29 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                     continue
                 }
 
+                // TODO: Validate paginated APIs
                 let sourceFile = SourceFileSyntax {
                     buildDateHelpersImportDecl(for: [input, output])
 
                     let inputMembers = input.members.filter({ $0.type != .binary })
+                    let discardableOutput = output.members.count == 1
 
                     ExtensionDeclSyntax("extension \(qualifiedName)") {
-                        StructDeclSyntax("""
-                            \(buildDocumentation(summary: input.document))
-                            public struct \(metadata.input): TCRequestModel
-                            """) {
+                        buildRequestModelDecl(for: metadata.input, metadata: input)
+                        buildResponseModelDecl(for: metadata.output, metadata: output)
 
-                            for member in inputMembers {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
+                        buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
+                        buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
 
-                            buildModelInitializerDeclSyntax(with: inputMembers)
-
-                            if !inputMembers.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in inputMembers {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
-                        }
-
-                        StructDeclSyntax("""
-                            \(buildDocumentation(summary: output.document))
-                            public struct \(metadata.output): TCResponseModel
-                            """) {
-
-                            for member in output.members {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
-
-                            if !output.members.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in output.members {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
-                        }
-
-                        let discardableResult = output.members.count == 1
-
-                        buildActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
-                        buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
-
-                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
-                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
+                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
+                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
                     }
                 }.withCopyrightHeader()
-                
+
                 try sourceFile.save(to: outputDir.appendingPathComponent("\(action).swift"))
             }
         }
-        
+
         if !errors.isEmpty {
             // MARK: Generate base error source
 
