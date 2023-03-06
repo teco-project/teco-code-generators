@@ -77,17 +77,3 @@ func buildServicePatchSupportDecl(for qualifiedName: String) -> ExtensionDeclSyn
             """)
     }
 }
-
-func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) -> InitializerDeclSyntax {
-    InitializerDeclSyntax("public init(\(initializerParameterList(for: members)))") {
-        for member in members {
-            if member.dateType != nil {
-                SequenceExprSyntax("""
-                self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
-                """)
-            } else {
-                SequenceExprSyntax("self.\(raw: member.identifier) = \(raw: member.escapedIdentifier)")
-            }
-        }
-    }
-}

@@ -18,7 +18,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     var serviceGenerator: URL?
 
     @Option(name: .long)
-    var tecoCoreRequirement: String = #".upToNextMinor(from: "0.4.0")"#
+    var tecoCoreRequirement: String = #".upToNextMinor(from: "0.5.0-beta.1")"#
 
     @Flag
     var dryRun: Bool = false

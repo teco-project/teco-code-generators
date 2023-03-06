@@ -40,191 +40,143 @@ struct TecoServiceGenerator: TecoCodeGenerator {
         }
 
         try ensureDirectory(at: outputDir, empty: true)
-
-        // MARK: Verify data model
         
-        var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: service.objects)
-        do {
-            let allModelNames = Set(service.objects.keys)
-            precondition(Set(allModelNames).count == service.objects.count)
+        try ServiceContext.$objects.withValue(service.objects) {
 
-            // Validate request/response models.
-            let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
-            for modelName in requestResponseModelNames {
-                precondition(service.objects[modelName] != nil)
-                precondition(service.objects[modelName]?.usage == nil)
-                models.removeValue(forKey: modelName)
+            // MARK: Verify data model
+
+            var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: ServiceContext.objects)
+            do {
+                let allModelNames = Set(ServiceContext.objects.keys)
+                precondition(Set(allModelNames).count == ServiceContext.objects.count)
+
+                // Validate request/response models.
+                let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
+                for modelName in requestResponseModelNames {
+                    precondition(ServiceContext.objects[modelName] != nil)
+                    precondition(ServiceContext.objects[modelName]?.usage == nil)
+                    models.removeValue(forKey: modelName)
+                }
+
+                // Validate model fragments.
+                for model in models.values {
+                    precondition(model.usage != nil)
+                }
+
+                // Sort models.
+                models.sort()
             }
 
-            // Validate model fragments.
-            for model in models.values {
-                precondition(model.usage != nil)
-            }
+            // MARK: Generate client source
 
-            // Sort models.
-            models.sort()
-        }
-
-        // MARK: Generate client source
-
-        do {
-            let sourceFile = SourceFileSyntax {
-                ImportDeclSyntax("@_exported import TecoCore")
-                buildServiceDecl(with: service, withErrors: !errors.isEmpty)
-                buildServicePatchSupportDecl(for: qualifiedName)
-            }.withCopyrightHeader()
-
-            try sourceFile.save(to: outputDir.appendingPathComponent("client.swift"))
-        }
-
-        // MARK: Generate model sources
-
-        do {
-            let sourceFile = SourceFileSyntax {
-                buildDateHelpersImportDecl(for: models.values)
-
-                ExtensionDeclSyntax("extension \(qualifiedName)") {
-                    for (model, metadata) in models {
-                        StructDeclSyntax("""
-                                \(buildDocumentation(summary: metadata.document))
-                                public struct \(model): \(metadata.protocols.joined(separator: ", "))
-                                """) {
-                            for member in metadata.members {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
-
-                            if metadata.protocols.contains("TCInputModel") {
-                                buildModelInitializerDeclSyntax(with: metadata.members)
-                            }
-
-                            if !metadata.members.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in metadata.members {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }.withCopyrightHeader()
-
-            try sourceFile.save(to: outputDir.appendingPathComponent("models.swift"))
-        }
-        
-        // MARK: Generate actions sources
-        
-        do {
-            let outputDir = outputDir.appendingPathComponent("actions", isDirectory: true)
-            try ensureDirectory(at: outputDir)
-
-            for (action, metadata) in service.actions {
-                guard let input = service.objects[metadata.input], input.type == .object,
-                      let output = service.objects[metadata.output], output.type == .object else {
-                    fatalError("broken API metadata")
-                }
-
-                // Skip Multipart-only API
-                if !input.members.isEmpty, input.members.allSatisfy({ $0.type == .binary }) {
-                    continue
-                }
-
+            do {
                 let sourceFile = SourceFileSyntax {
-                    buildDateHelpersImportDecl(for: [input, output])
+                    ImportDeclSyntax("@_exported import TecoCore")
+                    buildServiceDecl(with: service, withErrors: !errors.isEmpty)
+                    buildServicePatchSupportDecl(for: qualifiedName)
+                }.withCopyrightHeader()
 
-                    let inputMembers = input.members.filter({ $0.type != .binary })
+                try sourceFile.save(to: outputDir.appendingPathComponent("client.swift"))
+            }
+
+            // MARK: Generate model sources
+
+            do {
+                let sourceFile = SourceFileSyntax {
+                    buildDateHelpersImportDecl(for: models.values)
 
                     ExtensionDeclSyntax("extension \(qualifiedName)") {
-                        StructDeclSyntax("""
-                            \(buildDocumentation(summary: input.document))
-                            public struct \(metadata.input): TCRequestModel
-                            """) {
-
-                            for member in inputMembers {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
-
-                            buildModelInitializerDeclSyntax(with: inputMembers)
-
-                            if !inputMembers.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in inputMembers {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
+                        for (model, metadata) in models {
+                            buildGeneralModelDecl(for: model, metadata: metadata)
                         }
-
-                        StructDeclSyntax("""
-                            \(buildDocumentation(summary: output.document))
-                            public struct \(metadata.output): TCResponseModel
-                            """) {
-
-                            for member in output.members {
-                                VariableDeclSyntax("""
-                                    \(raw: buildDocumentation(summary: member.document))
-                                    \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                                    """)
-                            }
-
-                            if !output.members.isEmpty {
-                                EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-                                    for member in output.members {
-                                        EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
-                                    }
-                                }
-                            }
-                        }
-
-                        let discardableResult = output.members.count == 1
-
-                        buildActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
-                        buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableResult)
-
-                        buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
-                        buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableResult)
                     }
                 }.withCopyrightHeader()
-                
-                try sourceFile.save(to: outputDir.appendingPathComponent("\(action).swift"))
+
+                try sourceFile.save(to: outputDir.appendingPathComponent("models.swift"))
             }
-        }
-        
-        if !errors.isEmpty {
-            // MARK: Generate base error source
 
-            let baseErrorName = "\(qualifiedName)Error"
-            let errorOutputDir = outputDir.appendingPathComponent("errors", isDirectory: true)
-            try ensureDirectory(at: errorOutputDir)
+            // MARK: Generate actions sources
 
-            let errorDomains = getErrorDomains(from: errors)
             do {
-                let errorType = "TC\(baseErrorName)"
-                let sourceFile = SourceFileSyntax {
-                    buildServiceErrorTypeDecl(qualifiedName)
-                    buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
-                }.withCopyrightHeader()
-                
-                try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
-            }
-            
-            // MARK: Generate error domain sources
-            
-            for domain in errorDomains {
-                let errorMap = generateDomainedErrorMap(from: errors, for: domain)
-                let sourceFile = SourceFileSyntax {
-                    ExtensionDeclSyntax("extension TC\(baseErrorName)") {
-                        buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
+                let outputDir = outputDir.appendingPathComponent("actions", isDirectory: true)
+                try ensureDirectory(at: outputDir)
+
+                for (action, metadata) in service.actions {
+                    guard let input = ServiceContext.objects[metadata.input], input.type == .object,
+                          let output = ServiceContext.objects[metadata.output], output.type == .object else {
+                        fatalError("broken API metadata")
                     }
-                }.withCopyrightHeader()
+
+                    // Skip Multipart-only API
+                    if !input.members.isEmpty, input.members.allSatisfy({ $0.type == .binary }) {
+                        continue
+                    }
+
+                    let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
+
+                    let sourceFile = SourceFileSyntax {
+                        buildDateHelpersImportDecl(for: [input, output])
+                        if pagination != nil {
+                            ImportDeclSyntax("import TecoPaginationHelpers")
+                        }
+
+                        let inputMembers = input.members.filter({ $0.type != .binary })
+                        let discardableOutput = output.members.count == 1
+
+                        ExtensionDeclSyntax("extension \(qualifiedName)") {
+                            buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
+                            buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
+
+                            buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
+                            buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
+
+                            buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
+                            buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
+
+                            if metadata.status != .deprecated, pagination != nil {
+                                buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
+                                buildPaginatedActionWithCallbackDecl(for: action, metadata: metadata, output: output)
+
+                                buildActionPaginatorDecl(for: action, metadata: metadata, output: output)
+                            }
+                        }
+                    }.withCopyrightHeader()
+
+                    try sourceFile.save(to: outputDir.appendingPathComponent("\(action).swift"))
+                }
+            }
+
+            if !errors.isEmpty {
+
+                // MARK: Generate base error source
+
+                let baseErrorName = "\(qualifiedName)Error"
+                let errorOutputDir = outputDir.appendingPathComponent("errors", isDirectory: true)
+                try ensureDirectory(at: errorOutputDir)
+
+                let errorDomains = getErrorDomains(from: errors)
+                do {
+                    let errorType = "TC\(baseErrorName)"
+                    let sourceFile = SourceFileSyntax {
+                        buildServiceErrorTypeDecl(qualifiedName)
+                        buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
+                    }.withCopyrightHeader()
+
+                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
+                }
+
+                // MARK: Generate error domain sources
                 
-                try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))
+                for domain in errorDomains {
+                    let errorMap = generateDomainedErrorMap(from: errors, for: domain)
+                    let sourceFile = SourceFileSyntax {
+                        ExtensionDeclSyntax("extension TC\(baseErrorName)") {
+                            buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
+                        }
+                    }.withCopyrightHeader()
+
+                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))
+                }
             }
         }
     }
