@@ -96,13 +96,10 @@ func buildPaginatedCallbackActionDecl(for action: String, metadata: APIModel.Act
 }
 
 func buildPaginatorActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> FunctionDeclSyntax {
-    let namespace = "TCClient.Paginator<\(metadata.input), \(metadata.output)>"
-    let returns = "(results: \(namespace).ResultSequence, responses: \(namespace).ResponseSequence)"
-
-    return FunctionDeclSyntax("""
+    FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginator(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: returns) {
+        public func \(raw: action.lowerFirst())Paginator(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
             TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)
         }
         """)
