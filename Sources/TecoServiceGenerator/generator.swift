@@ -81,7 +81,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             // MARK: Generate model sources
 
-            do {
+            if !models.isEmpty {
                 let sourceFile = SourceFileSyntax {
                     buildDateHelpersImportDecl(for: models.values)
 
@@ -166,7 +166,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 }
 
                 // MARK: Generate error domain sources
-                
+
                 for domain in errorDomains {
                     let errorMap = generateDomainedErrorMap(from: errors, for: domain)
                     let sourceFile = SourceFileSyntax {
