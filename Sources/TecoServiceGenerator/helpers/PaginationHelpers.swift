@@ -152,3 +152,20 @@ extension APIObject {
         }
     }
 }
+
+extension APIObject {
+    var totalCountType: String {
+        if let count = getTotalCountField(for: self, associative: true) {
+            return getSwiftType(for: count.metadata, forceOptional: true)
+        } else {
+            return "Never?"
+        }
+    }
+
+    var itemsType: String? {
+        guard let items = getItemsField(for: self) else {
+            return nil
+        }
+        return "[\(getSwiftMemberType(for: items.metadata))]"
+    }
+}

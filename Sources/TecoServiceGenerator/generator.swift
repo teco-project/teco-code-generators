@@ -132,6 +132,12 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                             buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
                             buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
+
+                            if metadata.status != .deprecated, pagination != nil {
+                                buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
+                                buildPaginatedCallbackActionDecl(for: action, metadata: metadata, output: output)
+                                buildPaginatorActionDecl(for: action, metadata: metadata, output: output)
+                            }
                         }
                     }.withCopyrightHeader()
 

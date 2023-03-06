@@ -12,7 +12,7 @@ func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
 }
 
 func buildGetTotalCountDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
-    return FunctionDeclSyntax("""
+    FunctionDeclSyntax("""
         /// Extract the total count from the paginated response.
         public func getTotalCount() -> \(raw: getSwiftType(for: field.metadata, forceOptional: true)) {
             self.\(raw: field.key)
