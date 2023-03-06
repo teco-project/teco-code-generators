@@ -79,13 +79,13 @@ func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, out
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<(\(raw: output.totalCountType), \(raw: output.itemsType!))> {
+        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<(\(raw: output.totalCountType), [\(raw: output.itemType!)])> {
             \(buildPaginateExpr(for: action))
         }
         """)
 }
 
-func buildPaginatedCallbackActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> FunctionDeclSyntax {
+func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
@@ -95,9 +95,11 @@ func buildPaginatedCallbackActionDecl(for action: String, metadata: APIModel.Act
         """)
 }
 
-func buildPaginatorActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> FunctionDeclSyntax {
+func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
+        ///
+        /// - Returns: `AsyncSequence`s of `\(raw: output.itemType!)` and `\(raw: metadata.output)` that can be iterated over asynchronously on demand.
         \(buildActionAttributeList(for: metadata, discardableResult: false))
         public func \(raw: action.lowerFirst())Paginator(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
             TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)

@@ -162,10 +162,10 @@ extension APIObject {
         }
     }
 
-    var itemsType: String? {
+    var itemType: String? {
         guard let items = getItemsField(for: self) else {
             return nil
         }
-        return "[\(getSwiftMemberType(for: items.metadata))]"
+        return getSwiftMemberType(for: items.metadata)
     }
 }
