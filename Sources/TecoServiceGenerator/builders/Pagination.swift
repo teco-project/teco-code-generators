@@ -4,7 +4,7 @@ import SwiftSyntaxBuilder
 
 func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
-        /// Extract the total count from the paginated response.
+        /// Extract the returned item list from the paginated response.
         public func getItems() -> [\(raw: getSwiftMemberType(for: field.metadata))] {
             self.\(raw: field.key)\(raw: field.metadata.nullable || field.key.contains("?") ? " ?? []" : "")
         }
