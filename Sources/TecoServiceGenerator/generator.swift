@@ -45,16 +45,16 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             // MARK: Verify data model
 
-            var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: service.objects)
+            var models: OrderedDictionary<String, APIObject> = .init(uniqueKeysWithValues: ServiceContext.objects)
             do {
-                let allModelNames = Set(service.objects.keys)
-                precondition(Set(allModelNames).count == service.objects.count)
+                let allModelNames = Set(ServiceContext.objects.keys)
+                precondition(Set(allModelNames).count == ServiceContext.objects.count)
 
                 // Validate request/response models.
                 let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
                 for modelName in requestResponseModelNames {
-                    precondition(service.objects[modelName] != nil)
-                    precondition(service.objects[modelName]?.usage == nil)
+                    precondition(ServiceContext.objects[modelName] != nil)
+                    precondition(ServiceContext.objects[modelName]?.usage == nil)
                     models.removeValue(forKey: modelName)
                 }
 
@@ -102,8 +102,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 try ensureDirectory(at: outputDir)
 
                 for (action, metadata) in service.actions {
-                    guard let input = service.objects[metadata.input], input.type == .object,
-                          let output = service.objects[metadata.output], output.type == .object else {
+                    guard let input = ServiceContext.objects[metadata.input], input.type == .object,
+                          let output = ServiceContext.objects[metadata.output], output.type == .object else {
                         fatalError("broken API metadata")
                     }
 
@@ -112,12 +112,11 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         continue
                     }
 
-                    let paginationKind = getPaginationKind(input: input, output: output, service: service, action: metadata)
-                    let isPaginated = paginationKind != nil
+                    let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
                     let sourceFile = SourceFileSyntax {
                         buildDateHelpersImportDecl(for: [input, output])
-                        if isPaginated {
+                        if pagination != nil {
                             ImportDeclSyntax("import TecoPaginationHelpers")
                         }
 
@@ -125,8 +124,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         let discardableOutput = output.members.count == 1
 
                         ExtensionDeclSyntax("extension \(qualifiedName)") {
-                            buildRequestModelDecl(for: metadata.input, metadata: input, paginationKind: paginationKind, output: metadata.output, outputMetadata: output)
-                            buildResponseModelDecl(for: metadata.output, metadata: output, paginated: isPaginated)
+                            buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
+                            buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
 
                             buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
                             buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)

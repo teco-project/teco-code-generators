@@ -20,19 +20,19 @@ func buildGetTotalCountDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
         """)
 }
 
-func buildGetNextPaginatedRequestDecl(for request: String, response: String, kind: PaginationKind, input: APIObject, output: APIObject) -> FunctionDeclSyntax {
+func buildGetNextPaginatedRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         /// Compute the next request based on API response.
-        public func getNextPaginatedRequest(with response: \(response)) -> \(request)?
+        public func getNextPaginatedRequest(with response: \(output.name)) -> \(input.name)?
         """) {
-        GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output, paginationKind: kind)) else") {
+        GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) else") {
             ReturnStmtSyntax("return nil")
         }
-        ReturnStmtSyntax("return \(buildNextInputExpr(for: request, members: input.members, kind: kind))")
+        ReturnStmtSyntax("return \(buildNextInputExpr(for: input.name, members: input.metadata.members, kind: pagination))")
     }
 }
 
-private func buildNextInputExpr(for type: String, members: [APIObject.Member], kind: PaginationKind) -> ExprSyntax {
+private func buildNextInputExpr(for type: String, members: [APIObject.Member], kind: Pagination) -> ExprSyntax {
     var parameters = OrderedDictionary(members.map({ ($0.identifier, "self.\($0.identifier)") }), uniquingKeysWith: { $1 })
     switch kind {
     case .token(let input, let output):
@@ -50,7 +50,7 @@ private func buildNextInputExpr(for type: String, members: [APIObject.Member], k
     return .init(FunctionCallExprSyntax("\(raw: type)(\(raw: parameters.map({ "\($0.key): \($0.value)" }).joined(separator: ", ")))"))
 }
 
-private func buildHasMoreResultExpr(for output: APIObject, paginationKind: PaginationKind) -> ExprSyntax {
+private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {
     // See if there's indicator for more result.
     if let (key, metadata) = output.getFieldExactly({ $0.name.hasPrefix("HasNext") }) {
         precondition(metadata.optional == false && metadata.type == .bool)
@@ -72,7 +72,7 @@ private func buildHasMoreResultExpr(for output: APIObject, paginationKind: Pagin
         }
     }
     // See if there's token fot the next page.
-    if case .token(_, let output) = paginationKind, output.metadata.nullable {
+    if case .token(_, let output) = pagination, output.metadata.nullable {
         return ExprSyntax("response.\(raw: output.key) != nil")
     }
     // If there's no indicator, judge by list empty.

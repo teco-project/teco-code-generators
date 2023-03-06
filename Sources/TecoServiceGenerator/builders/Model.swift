@@ -2,10 +2,10 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildRequestModelDecl(for input: String, metadata: APIObject, paginationKind: PaginationKind?, output: String, outputMetadata: APIObject) -> StructDeclSyntax {
+func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) -> StructDeclSyntax {
     StructDeclSyntax("""
         \(buildDocumentation(summary: metadata.document))
-        public struct \(input): \(paginationKind != nil ? "TCPaginatedRequest" : "TCRequestModel")
+        public struct \(input): \(pagination != nil ? "TCPaginatedRequest" : "TCRequestModel")
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
 
@@ -20,8 +20,8 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, paginationKin
 
         buildModelCodingKeys(for: inputMembers)
 
-        if let paginationKind {
-            buildGetNextPaginatedRequestDecl(for: input, response: output, kind: paginationKind, input: metadata, output: outputMetadata)
+        if let pagination {
+            buildGetNextPaginatedRequestDecl(for: pagination, input: (input, metadata), output: output)
         }
     }
 }
@@ -42,11 +42,11 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: 
 
         buildModelCodingKeys(for: metadata.members)
 
-        if paginated, let itemsField = getItemsField(for: metadata) {
-            buildGetItemsDecl(with: itemsField)
+        if paginated, let items = getItemsField(for: metadata) {
+            buildGetItemsDecl(with: items)
 
-            if let field = getTotalCountField(for: metadata, associative: true) {
-                buildGetTotalCountDecl(with: field)
+            if let count = getTotalCountField(for: metadata, associative: true) {
+                buildGetTotalCountDecl(with: count)
             }
         }
     }

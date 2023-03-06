@@ -1,4 +1,4 @@
-enum PaginationKind {
+enum Pagination {
     /// Offset-based pagination.
     ///
     /// The associated value is offset field for input and optional limit field for output.
@@ -61,7 +61,7 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
     return nil
 }
 
-func getPaginationKind(input: APIObject, output: APIObject, service: APIModel, action: APIModel.Action) -> PaginationKind? {
+func computePaginationKind(input: APIObject, output: APIObject, service: APIModel, action: APIModel.Action) -> Pagination? {
     // The output should contain exactly 1 list.
     guard let list = getItemsField(for: output) else {
         return nil
