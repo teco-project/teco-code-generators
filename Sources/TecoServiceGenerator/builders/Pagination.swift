@@ -20,10 +20,10 @@ func buildGetTotalCountDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
         """)
 }
 
-func buildGetNextPaginatedRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) -> FunctionDeclSyntax {
+func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) -> FunctionDeclSyntax {
     FunctionDeclSyntax("""
         /// Compute the next request based on API response.
-        public func getNextPaginatedRequest(with response: \(output.name)) -> \(input.name)?
+        public func makeNextRequest(with response: \(output.name)) -> \(input.name)?
         """) {
         GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) else") {
             ReturnStmtSyntax("return nil")

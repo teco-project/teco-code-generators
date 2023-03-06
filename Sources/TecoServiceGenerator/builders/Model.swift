@@ -21,7 +21,7 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
         buildModelCodingKeys(for: inputMembers)
 
         if let pagination {
-            buildGetNextPaginatedRequestDecl(for: pagination, input: (input, metadata), output: output)
+            buildMakeNextRequestDecl(for: pagination, input: (input, metadata), output: output)
         }
     }
 }
