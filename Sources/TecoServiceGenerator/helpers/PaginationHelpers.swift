@@ -1,12 +1,18 @@
 enum PaginationKind {
-    // The associated value is token field for both input and output.
-    case token(input: APIObject.Field, output: APIObject.Field)
-
-    // The associated value is offset field for input and optional limit field for output.
+    /// Offset-based pagination.
+    ///
+    /// The associated value is offset field for input and optional limit field for output.
     case offset(input: APIObject.Field, output: APIObject.Field? = nil)
 
-    // The associated value is page id field for input.
+    /// Page-based pagination.
+    ///
+    /// The associated value is page number field for input.
     case paged(input: APIObject.Field)
+
+    /// Token-based pagination.
+    ///
+    /// The associated value is token field for both input and output.
+    case token(input: APIObject.Field, output: APIObject.Field)
 }
 
 func getItemsField(for output: APIObject) -> APIObject.Field? {
@@ -14,11 +20,11 @@ func getItemsField(for output: APIObject) -> APIObject.Field? {
 }
 
 func getTotalCountField(for output: APIObject, associative: Bool = false) -> APIObject.Field? {
-    // The output contains total count field.
+    // Output contains a total count field.
     if let field = output.getFieldExactly({ ["TotalCount", "TotalCnt", "TotalNum", "TotalElements", "Total"].contains($0.name) && $0.type == .int }) {
         return field
     }
-    // The output contains a single integer field, which we assume to be total count.
+    // Output contains a single integer field, which we assume to be total count.
     if let field = output.getFieldExactly({ $0.type == .int }),
        case let name = field.metadata.name,
        name == "Count" || name.hasPrefix("Total") || name.hasSuffix("Num")
@@ -27,10 +33,12 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
     }
     // Associative queries based on the list name.
     if associative {
-        // Associative query based on the list name.
+        // Possible suffices for the queried list name.
         let listSuffices = ["Set", "Info", "Infos", "List", "s"]
+        // Possible suffices for the total count field naem.
         let countSuffices = ["Count", "Cnt", "IdNum", "Num", "TotalCount"]
-        if let list = output.getFieldExactly({ $0.type == .list }) {
+        // Get entity name by removing the suffix from list, and try to locate related count field.
+        if let list = getItemsField(for: output) {
             var name = list.metadata.name
             for suffix in listSuffices where name.hasSuffix(suffix) {
                 name.removeLast(suffix.count)
@@ -40,7 +48,7 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
                 return count
             }
         }
-        // Associative query into the object.
+        // Associative query into the metadata object.
         if let field = output.getFieldExactly({ $0.type != .list }), field.metadata.type == .object {
             if let model = ServiceContext.objects[field.metadata.member],
                let count = getTotalCountField(for: model, associative: false)
@@ -49,54 +57,58 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
             }
         }
     }
-    // Else...
+    // Cannot find total count field at the moment.
     return nil
 }
 
 func getPaginationKind(input: APIObject, output: APIObject, service: APIModel, action: APIModel.Action) -> PaginationKind? {
-    // The response should contain exactly 1 list.
-    guard let list = output.getFieldExactly({ $0.type == .list }) else {
+    // The output should contain exactly 1 list.
+    guard let list = getItemsField(for: output) else {
         return nil
     }
+    // Offset-based pagination marked by "Offset".
     if let offset = input.getFieldExactly({ $0.name == "Offset" && $0.type == .int }) {
-        // Limit-Offset
-        if let _ = output.getFieldExactly({ $0.name == "Limit" && $0.type == .int }),
-           let offsetOut = output.getFieldExactly({ $0.name == "Offset" && $0.type == .int })
+        // Output contains "Limit" and "Offset" fields which can be used in pagination.
+        if let _ = output.getFieldExactly({ $0.name == "Offset" && $0.type == .int }),
+           let limit = output.getFieldExactly({ $0.name == "Limit" && $0.type == .int })
         {
-            return .offset(input: offset, output: offsetOut)
+            return .offset(input: offset, output: limit)
         }
-        // TotalCount
+        // Output contains "TotalCount" field.
         if let _ = getTotalCountField(for: output, associative: true) {
             return .offset(input: offset)
         }
-        // 0. 仅有一个list
+        // Output contains no other field than the item list.
         if let _ = output.getFieldExactly({ _ in true }) {
             return .offset(input: offset)
         }
-        // 1. 如果list名字叫items，认为合法
+        // The item list is named "Items" and contains a list of "Item"s.
         if list.metadata.name == "Items" && list.metadata.member.hasSuffix("Item") {
             return .offset(input: offset)
         }
-        // 2. 如果只有list和object，认为合法
+        // Output only contains a list and a object holding query metadata.
         if let field = output.getFieldExactly({ $0.type != .list }), field.metadata.type == .object {
             return .offset(input: offset)
         }
-        // 3. 如果存在Total字段，认为合法
+        // Output contains a "Total" field in non-integer which we cannot make use of at the point.
         if let _ = output.getFieldExactly({ $0.name == "Total" }) {
             return .offset(input: offset)
         }
-        // 4. 其它情况认为非法
+        // All other situations are regarded as illegal for pagination.
         return nil
     }
-    // Token为请求和响应公共字段
+    // Token-based pagination marked by common "Token" or "Cursor" fields.
     if let token = input.getFieldExactly({ $0.name.hasSuffix("Token") || $0.name.hasSuffix("Cursor") }) {
+        // Output must contain an associated token field named like "[Next]Token" or "[Next]Cursor".
         if let outputToken = output.getFieldExactly({ $0.name == token.metadata.name || $0.name == "Next\(token.metadata.name)" }) {
+            // Token fields should share the same type.
             precondition(token.metadata.type == outputToken.metadata.type && token.metadata.member == outputToken.metadata.member)
             return .token(input: token, output: outputToken)
         }
     }
-    // PageSize标志分页请求
+    // Page-based pagination marked by "PageSize".
     if let _ = input.getFieldExactly({ $0.name == "PageSize" }) {
+        // Try to find a page number field which is incremented 1 by a time.
         if let field = input.getFieldExactly({ ["PageNo", "PageNum", "PageNumber", "PageId", "PageIndex"].contains($0.name) && $0.type == .int }) {
             return .paged(input: field)
         }
@@ -117,6 +129,7 @@ extension APIObject {
     typealias Field = (key: String, metadata: APIObject.Member)
 
     func getFieldExactly(_ match: (APIObject.Member) throws -> Bool) rethrows -> Field? {
+        // If there's only one object in the model, we see it as the root of output.
         let (members, namespace): (_, String?) = {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
@@ -126,11 +139,12 @@ extension APIObject {
                 return (members, nil)
             }
         }()
-
+        // Check if the matched field is the only one.
         let filtered = try members.filter(match)
         guard filtered.count == 1, let field = filtered.first else {
             return nil
         }
+        // If the result is nested, add its namespace as prefix.
         if let namespace {
             return ("\(namespace).\(field.identifier)", field)
         } else {
