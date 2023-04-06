@@ -2,8 +2,8 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
-func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
-    FunctionDeclSyntax("""
+func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
+    DeclSyntax("""
         /// Extract the returned item list from the paginated response.
         public func getItems() -> [\(raw: getSwiftMemberType(for: field.metadata))] {
             self.\(raw: field.key)\(raw: field.metadata.nullable || field.key.contains("?") ? " ?? []" : "")
@@ -11,8 +11,8 @@ func buildGetItemsDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
         """)
 }
 
-func buildGetTotalCountDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
-    FunctionDeclSyntax("""
+func buildGetTotalCountDecl(with field: APIObject.Field) -> DeclSyntax {
+    DeclSyntax("""
         /// Extract the total count from the paginated response.
         public func getTotalCount() -> \(raw: getSwiftType(for: field.metadata, forceOptional: true)) {
             self.\(raw: field.key)
@@ -20,16 +20,16 @@ func buildGetTotalCountDecl(with field: APIObject.Field) -> FunctionDeclSyntax {
         """)
 }
 
-func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) -> FunctionDeclSyntax {
-    FunctionDeclSyntax("""
+func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) throws -> DeclSyntax {
+    try FunctionDeclSyntax("""
         /// Compute the next request based on API response.
-        public func makeNextRequest(with response: \(output.name)) -> \(input.name)?
+        public func makeNextRequest(with response: \(raw: output.name)) -> \(raw: input.name)?
         """) {
-        GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) else") {
-            ReturnStmtSyntax("return nil")
+        try GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) else") {
+            StmtSyntax("return nil")
         }
-        ReturnStmtSyntax("return \(buildNextInputExpr(for: input.name, members: input.metadata.members, kind: pagination))")
-    }
+        StmtSyntax("return \(buildNextInputExpr(for: input.name, members: input.metadata.members, kind: pagination))")
+    }.as(DeclSyntax.self)!
 }
 
 private func buildNextInputExpr(for type: String, members: [APIObject.Member], kind: Pagination) -> ExprSyntax {
@@ -47,7 +47,11 @@ private func buildNextInputExpr(for type: String, members: [APIObject.Member], k
     case .paged(let input):
         parameters[input.key] = "\(nonOptionalIntegerValue(for: input, prefix: "self.")) + 1"
     }
-    return .init(FunctionCallExprSyntax("\(raw: type)(\(raw: parameters.map({ "\($0.key): \($0.value)" }).joined(separator: ", ")))"))
+    return FunctionCallExprSyntax(callee: ExprSyntax("\(raw: type)")) {
+        for (label, value) in parameters {
+            TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: value)"))
+        }
+    }.as(ExprSyntax.self)!
 }
 
 private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {

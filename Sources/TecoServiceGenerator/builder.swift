@@ -5,23 +5,23 @@ import TecoCodeGeneratorCommons
 @CodeBlockItemListBuilder
 func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeBlockItemListSyntax {
     if models.flatMap(\.members).contains(where: { $0.dateType != nil }) {
-        ImportDeclSyntax("@_exported import struct Foundation.Date")
-        ImportDeclSyntax("import TecoDateHelpers")
+        DeclSyntax("@_exported import struct Foundation.Date")
+        DeclSyntax("import TecoDateHelpers")
     }
 }
 
-func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> StructDeclSyntax {
-    StructDeclSyntax("""
-        \(buildDocumentation(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace, discussion: model.metadata.document))
-        public struct \(model.namespace): TCService
+func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws -> StructDeclSyntax {
+    try StructDeclSyntax("""
+        \(raw: buildDocumentation(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace, discussion: model.metadata.document))
+        public struct \(raw: model.namespace): TCService
         """) {
 
-        VariableDeclSyntax("""
+        DeclSyntax("""
             /// Client used to communicate with Tencent Cloud.
             public let client: TCClient
             """)
 
-        VariableDeclSyntax("""
+        DeclSyntax("""
             /// Service context details.
             public let config: TCServiceConfig
             """)
@@ -30,8 +30,8 @@ func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) -> Struct
     }
 }
 
-func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> InitializerDeclSyntax {
-    InitializerDeclSyntax("""
+func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
+    DeclSyntax("""
         /// Initialize the ``\(raw: serviceMetadata.shortName.upperFirst())`` client.
         ///
         /// - Parameters:
@@ -63,9 +63,9 @@ func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, 
         """)
 }
 
-func buildServicePatchSupportDecl(for qualifiedName: String) -> ExtensionDeclSyntax {
-    ExtensionDeclSyntax("extension \(qualifiedName)") {
-        InitializerDeclSyntax("""
+func buildServicePatchSupportDecl(for service: String) throws -> DeclSyntax {
+    try ExtensionDeclSyntax("extension \(raw: service)") {
+        DeclSyntax("""
             /// Initializer required by ``with(region:language:endpoint:timeout:byteBufferAllocator:)``.
             ///
             /// You are not able to use this initializer directly as there are no public initializers for ``TCServiceConfig/Patch``.
@@ -75,5 +75,5 @@ func buildServicePatchSupportDecl(for qualifiedName: String) -> ExtensionDeclSyn
                 self.config = service.config.with(patch: patch)
             }
             """)
-    }
+    }.as(DeclSyntax.self)!
 }

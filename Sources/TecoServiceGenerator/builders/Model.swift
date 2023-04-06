@@ -2,45 +2,77 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) -> StructDeclSyntax {
-    StructDeclSyntax("""
-        \(buildDocumentation(summary: metadata.document))
-        public struct \(input): \(pagination != nil ? "TCPaginatedRequest" : "TCRequestModel")
+func buildInitializerParameterList(for members: [APIObject.Member], packed: Bool = false) -> FunctionParameterListSyntax {
+    func getDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
+        let type = getSwiftType(for: member, isInitializer: true)
+        if let defaultValue = member.default, member.required {
+            if type == "String" {
+                return ExprSyntax(literal: defaultValue)
+            } else if type == "Bool" {
+                return ExprSyntax("\(raw: defaultValue.lowercased())")
+            } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
+                return ExprSyntax("\(raw: defaultValue)")
+            } else if type == "Date" {
+                fatalError("FIXME: Default value support for Date not implemented yet!")
+            }
+        }
+        if !member.required {
+            return ExprSyntax("nil")
+        }
+        return nil
+    }
+
+    return FunctionParameterListSyntax {
+        for member in members {
+            FunctionParameterSyntax(
+                firstName: TokenSyntax("\(raw: member.identifier)"),
+                type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
+                defaultArgument: getDefaultArgument(for: member).flatMap(InitializerClauseSyntax.init),
+                trailingComma: packed ? .commaToken() : nil
+            )
+        }
+    }
+}
+
+func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) throws -> StructDeclSyntax {
+    try StructDeclSyntax("""
+        \(raw: buildDocumentation(summary: metadata.document))
+        public struct \(raw: input): \(raw: pagination != nil ? "TCPaginatedRequest" : "TCRequestModel")
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
 
         for member in inputMembers {
-            VariableDeclSyntax("""
+            DeclSyntax("""
                 \(raw: buildDocumentation(summary: member.document))
                 \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                 """)
         }
 
-        buildModelInitializerDeclSyntax(with: inputMembers)
+        try buildModelInitializerDeclSyntax(with: inputMembers)
 
-        buildModelCodingKeys(for: inputMembers)
+        try buildModelCodingKeys(for: inputMembers)
 
         if let pagination {
-            buildMakeNextRequestDecl(for: pagination, input: (input, metadata), output: output)
+            try buildMakeNextRequestDecl(for: pagination, input: (input, metadata), output: output)
         }
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: Bool) -> StructDeclSyntax {
-    StructDeclSyntax("""
-        \(buildDocumentation(summary: metadata.document))
-        public struct \(output): \(paginated ? "TCPaginatedResponse" : "TCResponseModel")
+func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: Bool) throws -> StructDeclSyntax {
+    try StructDeclSyntax("""
+        \(raw: buildDocumentation(summary: metadata.document))
+        public struct \(raw: output): \(raw: paginated ? "TCPaginatedResponse" : "TCResponseModel")
         """) {
         let outputMembers = metadata.members
 
         for member in outputMembers {
-            VariableDeclSyntax("""
-            \(raw: buildDocumentation(summary: member.document))
-            \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-            """)
+            DeclSyntax("""
+                \(raw: buildDocumentation(summary: member.document))
+                \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
+                """)
         }
 
-        buildModelCodingKeys(for: metadata.members)
+        try buildModelCodingKeys(for: metadata.members)
 
         if paginated, let items = getItemsField(for: metadata) {
             buildGetItemsDecl(with: items)
@@ -52,48 +84,48 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: 
     }
 }
 
-func buildGeneralModelDecl(for model: String, metadata: APIObject) -> StructDeclSyntax {
-    StructDeclSyntax("""
-        \(buildDocumentation(summary: metadata.document))
-        public struct \(model): \(metadata.protocols.joined(separator: ", "))
+func buildGeneralModelDecl(for model: String, metadata: APIObject) throws -> StructDeclSyntax {
+    try StructDeclSyntax("""
+        \(raw: buildDocumentation(summary: metadata.document))
+        public struct \(raw: model): \(raw: metadata.protocols.joined(separator: ", "))
         """) {
         let members = metadata.members
 
         for member in members {
-            VariableDeclSyntax("""
+            DeclSyntax("""
                 \(raw: buildDocumentation(summary: member.document))
                 \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
                 """)
         }
 
         if metadata.initializable {
-            buildModelInitializerDeclSyntax(with: members)
+            try buildModelInitializerDeclSyntax(with: members)
         }
 
-        buildModelCodingKeys(for: members)
+        try buildModelCodingKeys(for: members)
     }
 }
 
-func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) -> InitializerDeclSyntax {
-    InitializerDeclSyntax("public init(\(initializerParameterList(for: members)))") {
+func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) throws -> InitializerDeclSyntax {
+    try InitializerDeclSyntax("public init(\(buildInitializerParameterList(for: members)))") {
         for member in members {
             if member.dateType != nil {
-                SequenceExprSyntax("""
-                self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
-                """)
+                ExprSyntax("""
+                    self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
+                    """)
             } else {
-                SequenceExprSyntax("self.\(raw: member.identifier) = \(raw: member.escapedIdentifier)")
+                ExprSyntax("self.\(raw: member.identifier) = \(raw: member.escapedIdentifier)")
             }
         }
     }
 }
 
 @MemberDeclListBuilder
-func buildModelCodingKeys(for members: [APIObject.Member]) -> MemberDeclListSyntax {
+func buildModelCodingKeys(for members: [APIObject.Member]) throws -> MemberDeclListSyntax {
     if !members.isEmpty {
-        EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
+        try EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
             for member in members {
-                EnumCaseDeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
+                DeclSyntax("case \(raw: member.escapedIdentifier) = \(literal: member.name)")
             }
         }
     }

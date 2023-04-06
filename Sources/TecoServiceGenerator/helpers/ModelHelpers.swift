@@ -1,3 +1,6 @@
+import SwiftSyntax
+import SwiftSyntaxBuilder
+
 func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forceOptional: Bool = false) -> String {
     var type = getSwiftMemberType(for: model)
 
@@ -46,29 +49,6 @@ func getSwiftMemberType(for model: APIObject.Member) -> String {
     }
  
     return type
-}
-
-func initializerParameterList(for members: [APIObject.Member], packed: Bool = false) -> String {
-    let params = members.map { member in
-        let type = getSwiftType(for: member, isInitializer: true)
-        var parameter = "\(member.identifier): \(type)"
-        if let defaultValue = member.default, member.required {
-            if type == "String" {
-                parameter += " = \(defaultValue.makeLiteralSyntax())"
-            } else if type == "Bool" {
-                parameter += " = \(defaultValue.lowercased())"
-            } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
-                parameter += " = \(defaultValue)"
-            } else if type == "Date" {
-                print("FIXME: Default value support for Date not implemented yet!")
-            }
-        } else if !member.required {
-            parameter += " = nil"
-        }
-        return parameter
-    }
-
-    return packed ? params.map({ $0 + ", " }).joined() : params.joined(separator: ", ")
 }
 
 func publicLetWithWrapper(for member: APIObject.Member) -> String {
