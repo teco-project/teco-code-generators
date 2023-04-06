@@ -80,7 +80,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
         targets.sort { $0.service == $1.service ? $0.version > $1.version : $0.service < $1.service }
 
         let packageSwiftFile = SourceFileSyntax {
-            ImportDeclSyntax("""
+            DeclSyntax("""
                 // swift-tools-version:5.5
                 //===----------------------------------------------------------------------===//
                 //
@@ -98,7 +98,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                 import PackageDescription
                 """)
 
-            VariableDeclSyntax("""
+            DeclSyntax("""
                 let package = Package(
                     name: "teco",
                     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
