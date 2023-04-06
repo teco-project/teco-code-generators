@@ -25,12 +25,14 @@ func buildTargetExpr(name: String, path: String, trailingComma: Bool = false) ->
 
 func buildTargetListExpr(for targets: [(service: String, version: String)]) -> ArrayExprSyntax {
     ArrayExprSyntax {
-        for target in targets {
+        for (index, target) in targets.enumerated() {
             buildTargetExpr(
                 name: "Teco\(target.service)\(target.version)",
                 path: "./Sources/Teco/\(target.service)/\(target.version)",
                 trailingComma: true
-            ).with(\.trailingTrivia, .newline)
+            )
+            .with(\.trailingTrivia, .newline)
+            .with(\.leadingTrivia, index == 0 ? .newline : nil)
         }
-    }.with(\.leadingTrivia, .newline)
+    }
 }
