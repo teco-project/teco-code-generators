@@ -22,7 +22,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     var tecoCoreRequirement: String = #".upToNextMinor(from: "0.5.0-beta.1")"#
 
     @Option(name: .short, help: "Maximum jobs to execute in parallel")
-    var jobs: Int = ProcessInfo().processorCount
+    var jobs: Int = ProcessInfo.processInfo.processorCount
 
     @Flag
     var dryRun: Bool = false
