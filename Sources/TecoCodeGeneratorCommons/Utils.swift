@@ -78,11 +78,7 @@ extension SourceFileSyntax {
             
             
             """
-        if let leadingTrivia = self.leadingTrivia {
-            return self.withLeadingTrivia(.init(pieces: [.lineComment(header)] + leadingTrivia.pieces))
-        } else {
-            return self.withLeadingTrivia(.lineComment(header))
-        }
+        return self.with(\.leadingTrivia, .lineComment(header) + (self.leadingTrivia ?? []))
     }
 
     public func save(to url: URL) throws {
