@@ -2,26 +2,26 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildCommonErrorStructDecl(from errors: [CommonError]) -> StructDeclSyntax {
-    StructDeclSyntax("""
+func buildCommonErrorStructDecl(from errors: [CommonError]) throws -> DeclSyntax {
+    try StructDeclSyntax("""
         /// Common error type returned by Tencent Cloud.
         public struct TCCommonError: TCServiceErrorType
         """) {
-        EnumDeclSyntax("enum Code: String") {
+        try EnumDeclSyntax("enum Code: String") {
             for error in errors {
-                EnumCaseDeclSyntax("case \(raw: error.identifier) = \(literal: error.code)")
+                DeclSyntax("case \(raw: error.identifier) = \(literal: error.code)")
             }
         }
 
-        VariableDeclSyntax("private let error: Code")
-        VariableDeclSyntax("public let context: TCErrorContext?")
-        VariableDeclSyntax("""
+        DeclSyntax("private let error: Code")
+        DeclSyntax("public let context: TCErrorContext?")
+        DeclSyntax("""
             public var errorCode: String {
                 self.error.rawValue
             }
             """)
 
-        InitializerDeclSyntax("""
+        DeclSyntax("""
             public init?(errorCode: String, context: TCErrorContext) {
                 guard let error = Code(rawValue: errorCode) else {
                     return nil
@@ -31,13 +31,13 @@ func buildCommonErrorStructDecl(from errors: [CommonError]) -> StructDeclSyntax 
             }
             """)
 
-        FunctionDeclSyntax("""
+        DeclSyntax("""
             public func asCommonError() -> TCCommonError? {
                 return self
             }
             """)
 
-        InitializerDeclSyntax("""
+        DeclSyntax("""
             internal init(_ error: Code, context: TCErrorContext? = nil) {
                 self.error = error
                 self.context = context
@@ -45,12 +45,12 @@ func buildCommonErrorStructDecl(from errors: [CommonError]) -> StructDeclSyntax 
             """)
 
         for error in errors {
-            VariableDeclSyntax("""
+            DeclSyntax("""
                 \(raw: buildDocumentation(summary: error.description, discussion: error.solution))
                 public static var \(raw: error.identifier): TCCommonError {
                     TCCommonError(.\(raw: error.identifier))
                 }
                 """)
         }
-    }
+    }.as(DeclSyntax.self)!
 }
