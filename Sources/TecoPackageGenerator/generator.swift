@@ -2,6 +2,7 @@ import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import class Foundation.Process
+import class Foundation.ProcessInfo
 import TecoCodeGeneratorCommons
 
 @main
@@ -20,6 +21,9 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     @Option(name: .long)
     var tecoCoreRequirement: String = #".upToNextMinor(from: "0.5.0-beta.1")"#
 
+    @Option(name: .short, help: "Maximum jobs to execute in parallel")
+    var jobs: Int = ProcessInfo.processInfo.processorCount
+
     @Flag
     var dryRun: Bool = false
 
@@ -34,7 +38,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
 
         var generatorProcesses: [Process] = []
 
-        for service in serviceDirectories {
+        for (index, service) in serviceDirectories.enumerated() {
             let versionedDirectories = try contentsOfDirectory(at: service, subdirectoryOnly: true)
             for version in versionedDirectories {
                 let manifestJSON = version.appendingPathComponent("api.json")
@@ -71,6 +75,11 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                             print(process.arguments ?? [], process.terminationReason)
                         }
                     }
+
+                    if index >= self.jobs {
+                        generatorProcesses.removeFirst().waitUntilExit()
+                    }
+
                     try process.run()
                     generatorProcesses.append(process)
                 }
