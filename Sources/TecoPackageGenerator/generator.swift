@@ -76,7 +76,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
                         }
                     }
 
-                    if index >= jobs {
+                    if index >= self.jobs {
                         generatorProcesses.removeFirst().waitUntilExit()
                     }
 
