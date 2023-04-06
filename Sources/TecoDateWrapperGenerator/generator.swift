@@ -15,33 +15,33 @@ struct TecoDateWrapperGenerator: TecoCodeGenerator {
 
     func generate() throws {
         for encoding in DateEncoding.all {
-            let sourceFile = SourceFileSyntax {
+            let sourceFile = try SourceFileSyntax {
                 buildImportDecls(for: encoding)
 
-                StructDeclSyntax("""
+                try StructDeclSyntax("""
                     @propertyWrapper
-                    public struct \(encoding.rawValue)<WrappedValue: TCDateValue>: Codable
+                    public struct \(raw: encoding.rawValue)<WrappedValue: TCDateValue>: Codable
                     """) {
-                    VariableDeclSyntax("public var wrappedValue: WrappedValue { self._dateValue }")
+                    DeclSyntax("public var wrappedValue: WrappedValue { self._dateValue }")
 
-                    VariableDeclSyntax("""
+                    DeclSyntax("""
                         public var projectedValue: StorageValue {
                             get { self._stringValue }
                             set { self._stringValue = newValue }
                         }
                         """)
 
-                    VariableDeclSyntax("private var _dateValue: WrappedValue")
-                    VariableDeclSyntax("private var _stringValue: StorageValue")
+                    DeclSyntax("private var _dateValue: WrappedValue")
+                    DeclSyntax("private var _stringValue: StorageValue")
 
-                    InitializerDeclSyntax("""
+                    DeclSyntax("""
                         public init(wrappedValue: WrappedValue) {
                             self._dateValue = wrappedValue
                             self._stringValue = wrappedValue.encode(formatter: Self._formatter)
                         }
                         """)
 
-                    InitializerDeclSyntax("""
+                    DeclSyntax("""
                         public init(from decoder: Decoder) throws {
                             let container = try decoder.singleValueContainer()
                             self._stringValue = try container.decode(StorageValue.self)
@@ -50,8 +50,8 @@ struct TecoDateWrapperGenerator: TecoCodeGenerator {
                         """)
                 }
 
-                ExtensionDeclSyntax("extension \(encoding.rawValue): TCDateWrapper") {
-                    VariableDeclSyntax("""
+                try ExtensionDeclSyntax("extension \(raw: encoding.rawValue): TCDateWrapper") {
+                    DeclSyntax("""
                         public static var _valueDescription: String {
                             \(literal: encoding.valueDescription)
                         }
