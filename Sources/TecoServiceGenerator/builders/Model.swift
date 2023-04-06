@@ -13,7 +13,7 @@ func buildInitializerParameterList(for members: [APIObject.Member], packed: Bool
             } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
                 return ExprSyntax("\(raw: defaultValue)")
             } else if type == "Date" {
-                fatalError("FIXME: Default value support for Date not implemented yet!")
+                fatalError("Default value support for Date not implemented yet!")
             }
         }
         if !member.required {
@@ -26,8 +26,9 @@ func buildInitializerParameterList(for members: [APIObject.Member], packed: Bool
         for member in members {
             FunctionParameterSyntax(
                 firstName: TokenSyntax("\(raw: member.identifier)"),
+                colon: .colonToken(),
                 type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
-                defaultArgument: getDefaultArgument(for: member).flatMap(InitializerClauseSyntax.init),
+                defaultArgument: getDefaultArgument(for: member).map { .init(value: $0) },
                 trailingComma: packed ? .commaToken() : nil
             )
         }

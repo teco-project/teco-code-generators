@@ -26,14 +26,14 @@ private func buildExecuteExpr(for action: String) -> ExprSyntax {
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
     let extraArgs = TupleExprElementListSyntax {
         for (label, value) in extraArguments {
-            TupleExprElementSyntax(label: .identifier(label), expression: ExprSyntax("\(raw: value)"), trailingComma: .commaToken())
+            TupleExprElementSyntax(label: .identifier(label), colon: .colonToken(), expression: ExprSyntax("\(raw: value)"), trailingComma: .commaToken())
         }
     }
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
 private func buildInputExpr(for type: String, members: [APIObject.Member]) -> ExprSyntax {
-    FunctionCallExprSyntax(calledExpression: ExprSyntax("\(raw: type)")) {
+    FunctionCallExprSyntax(calledExpression: ExprSyntax("\(raw: type)"), leftParen: .leftParenToken(), rightParen: .rightParenToken()) {
         for member in members {
             TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
         }
