@@ -13,17 +13,17 @@ struct TecoRegionGenerator: TecoCodeGenerator {
     var dryRun: Bool = false
 
     func generate() throws {
-        let sourceFile = SourceFileSyntax {
-            StructDeclSyntax("""
+        let sourceFile = try SourceFileSyntax {
+            try StructDeclSyntax("""
                 /// Tencent Cloud region identified by Region ID.
                 public struct TCRegion: Equatable, Sendable
                 """) {
-                VariableDeclSyntax("""
+                DeclSyntax("""
                     /// Raw region ID.
                     public var rawValue: String
                     """)
 
-                EnumDeclSyntax("""
+                DeclSyntax("""
                     /// Tencent Cloud service region kind.
                     public enum Kind: Equatable, Sendable {
                         /// Global service regions that are open and accessible within each other.
@@ -34,12 +34,12 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                         case `internal`
                     }
                     """)
-                VariableDeclSyntax("""
+                DeclSyntax("""
                     /// Region type by data isolation.
                     public var kind: Kind
                     """)
 
-                InitializerDeclSyntax("""
+                DeclSyntax("""
                     public init(id: String, kind: Kind = .global) {
                         self.rawValue = id
                         self.kind = kind
@@ -47,7 +47,7 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                     """)
 
                 for region in regions {
-                    VariableDeclSyntax("""
+                    DeclSyntax("""
                         /// \(raw: region.description)
                         public static var \(raw: region.identifier): TCRegion {
                             \(buildRegionExpr(for: region))
@@ -55,7 +55,7 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                         """)
                 }
 
-                FunctionDeclSyntax("""
+                DeclSyntax("""
                     /// Returns a ``TCRegion`` with custom Region ID.
                     ///
                     /// - Parameters:
@@ -66,28 +66,28 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                     }
                     """)
 
-                FunctionDeclSyntax("""
+                DeclSyntax("""
                     public static func == (lhs: TCRegion, rhs: TCRegion) -> Bool {
                         lhs.rawValue == rhs.rawValue
                     }
                     """)
             }
 
-            ExtensionDeclSyntax("""
+            DeclSyntax("""
                 extension TCRegion: CustomStringConvertible {
                     public var description: String { self.rawValue }
                 }
                 """)
 
-            ExtensionDeclSyntax(extendedType: TypeSyntax("TCRegion")) {
-                FunctionDeclSyntax("""
+            try ExtensionDeclSyntax("extension TCRegion") {
+                DeclSyntax("""
                     /// Returns a Boolean value indicating whether a region is accessible from another.
                     public func isAccessible(from region: TCRegion) -> Bool {
                         self == region || (self.kind == region.kind && self.kind != .internal)
                     }
                     """)
 
-                FunctionDeclSyntax("""
+                DeclSyntax("""
                     /// Returns the default region kind inferred from region ID.
                     private static func defaultKind(from regionId: String) -> Kind {
                         return regionId.hasSuffix("-fsi") ? .financial : .internal

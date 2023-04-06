@@ -2,45 +2,37 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 
 func buildProductExpr(name: String, trailingComma: Bool = false) -> ArrayElementSyntax {
-    let productNameLiteral = name.makeLiteralSyntax()
-
-    let valueExpr = FunctionCallExprSyntax(callee: ExprSyntax(".library")) {
-        TupleExprElementSyntax(label: "name", expression: productNameLiteral)
-        TupleExprElementSyntax(label: "targets", expression: ArrayExprSyntax(elements: [.init(expression: productNameLiteral)]))
-    }
+    let valueExpr = ExprSyntax(".library(name: \(literal: name), targets: [\(literal: name)])")
     return ArrayElementSyntax(expression: valueExpr, trailingComma: trailingComma ? .commaToken() : nil)
 }
 
 func buildProductListExpr(for targets: [(service: String, version: String)]) -> ArrayExprSyntax {
-    ArrayExprSyntax(elements: ArrayElementListSyntax {
-        for target in targets {
+    ArrayExprSyntax {
+        for (index, target) in targets.enumerated() {
             buildProductExpr(name: "Teco\(target.service)\(target.version)", trailingComma: true)
-                .withTrailingTrivia(.newline)
+                .with(\.trailingTrivia, .newline)
+                .with(\.leadingTrivia, index == 0 ? .newline : nil)
         }
-    }.withLeadingTrivia(.newline))
+    }
 }
 
 func buildTargetExpr(name: String, path: String, trailingComma: Bool = false) -> ArrayElementSyntax {
-    let targetNameLiteral = name.makeLiteralSyntax()
-    let targetPathLiteral = path.makeLiteralSyntax()
-
-    let valueExpr = FunctionCallExprSyntax(callee: ExprSyntax(".target")) {
-        TupleExprElementSyntax(label: "name", expression: targetNameLiteral)
-        TupleExprElementSyntax(label: "dependencies",
-                               expression: ArrayExprSyntax(#"[.product(name: "TecoCore", package: "teco-core")]"#))
-        TupleExprElementSyntax(label: "path", expression: targetPathLiteral)
-    }
+    let valueExpr = ExprSyntax("""
+        .target(name: \(literal: name), dependencies: [.product(name: "TecoCore", package: "teco-core")], path: \(literal: path))
+        """)
     return ArrayElementSyntax(expression: valueExpr, trailingComma: trailingComma ? .commaToken() : nil)
 }
 
 func buildTargetListExpr(for targets: [(service: String, version: String)]) -> ArrayExprSyntax {
-    ArrayExprSyntax(elements: ArrayElementListSyntax {
-        for target in targets {
+    ArrayExprSyntax {
+        for (index, target) in targets.enumerated() {
             buildTargetExpr(
                 name: "Teco\(target.service)\(target.version)",
                 path: "./Sources/Teco/\(target.service)/\(target.version)",
                 trailingComma: true
-            ).withTrailingTrivia(.newline)
+            )
+            .with(\.trailingTrivia, .newline)
+            .with(\.leadingTrivia, index == 0 ? .newline : nil)
         }
-    }.withLeadingTrivia(.newline))
+    }
 }

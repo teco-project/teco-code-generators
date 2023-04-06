@@ -5,17 +5,17 @@ import SwiftSyntaxBuilder
 func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
     switch encoding {
     case .date, .timestamp:
-        ImportDeclSyntax("import struct Foundation.Date")
-        ImportDeclSyntax("import struct Foundation.Locale")
-        ImportDeclSyntax("import struct Foundation.TimeZone")
-        ImportDeclSyntax("import class Foundation.DateFormatter")
+        DeclSyntax("import struct Foundation.Date")
+        DeclSyntax("import struct Foundation.Locale")
+        DeclSyntax("import struct Foundation.TimeZone")
+        DeclSyntax("import class Foundation.DateFormatter")
     case .timestamp_iso8601:
-        ImportDeclSyntax("import struct Foundation.Date")
-        ImportDeclSyntax("import class Foundation.ISO8601DateFormatter")
+        DeclSyntax("import struct Foundation.Date")
+        DeclSyntax("import class Foundation.ISO8601DateFormatter")
     }
 }
 
-func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDeclSyntax {
+func buildDateFormatterDecl(for encoding: DateEncoding) -> DeclSyntax {
     let dateFormat: String
     switch encoding {
     case .date:
@@ -23,13 +23,13 @@ func buildDateFormatterDecl(for encoding: DateEncoding) -> VariableDeclSyntax {
     case .timestamp:
         dateFormat = "yyyy-MM-dd HH:mm:ss"
     case .timestamp_iso8601:
-        return VariableDeclSyntax("""
+        return DeclSyntax("""
             public static var _formatter: ISO8601DateFormatter {
                 ISO8601DateFormatter()
             }
             """)
     }
-    return VariableDeclSyntax("""
+    return DeclSyntax("""
         public static var _formatter: DateFormatter {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")

@@ -20,10 +20,10 @@ struct TecoCommonErrorGenerator: TecoCodeGenerator {
         let apiErrors = try getAPIErrors(from: errorFile)
         let errors = getCommonErrors(with: apiErrors)
 
-        let sourceFile = SourceFileSyntax {
-            buildCommonErrorStructDecl(from: errors)
+        let sourceFile = try SourceFileSyntax {
+            try buildCommonErrorStructDecl(from: errors)
 
-            ExtensionDeclSyntax(#"""
+            DeclSyntax(#"""
                 extension TCCommonError {
                     /// Returns a Boolean value indicating whether a ``TCCommonError`` belongs to another.
                     internal static func ~= (lhs: Self, rhs: Self) -> Bool {

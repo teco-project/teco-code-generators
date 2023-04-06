@@ -2,7 +2,7 @@
 //
 // This source file is part of the Teco open source project.
 //
-// Copyright (c) 2022 the Teco project authors
+// Copyright (c) 2022-2023 the Teco project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -33,14 +33,14 @@ public class CodeGenerationFormat: BasicFormat {
             return super.visit(node)
         } else {
             let formatted = super.visit(node)
-            return formatted.withLeadingTrivia(.newline + (formatted.leadingTrivia ?? []))
+            return formatted.with(\.leadingTrivia, .newline + (formatted.leadingTrivia ?? []))
         }
     }
 
     public override func visit(_ node: CodeBlockItemSyntax) -> CodeBlockItemSyntax {
         if node.parent?.parent?.is(SourceFileSyntax.self) == true, !node.item.is(ImportDeclSyntax.self) {
             let formatted = super.visit(node)
-            return formatted.withLeadingTrivia(.newline + (formatted.leadingTrivia ?? []))
+            return formatted.with(\.leadingTrivia, .newline + (formatted.leadingTrivia ?? []))
         } else {
             return super.visit(node)
         }

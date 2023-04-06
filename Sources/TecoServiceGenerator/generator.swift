@@ -29,7 +29,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
         let decoder = JSONDecoder()
         let service = try decoder.decode(APIModel.self, from: .init(contentsOf: source))
-        let qualifiedName = service.namespace
+        let serviceName = service.namespace
         let errors: [APIError]
 
         if let errorFile {
@@ -70,10 +70,10 @@ struct TecoServiceGenerator: TecoCodeGenerator {
             // MARK: Generate client source
 
             do {
-                let sourceFile = SourceFileSyntax {
-                    ImportDeclSyntax("@_exported import TecoCore")
-                    buildServiceDecl(with: service, withErrors: !errors.isEmpty)
-                    buildServicePatchSupportDecl(for: qualifiedName)
+                let sourceFile = try SourceFileSyntax {
+                    DeclSyntax("@_exported import TecoCore")
+                    try buildServiceDecl(with: service, withErrors: !errors.isEmpty)
+                    try buildServicePatchSupportDecl(for: serviceName)
                 }.withCopyrightHeader()
 
                 try sourceFile.save(to: outputDir.appendingPathComponent("client.swift"))
@@ -82,12 +82,12 @@ struct TecoServiceGenerator: TecoCodeGenerator {
             // MARK: Generate model sources
 
             if !models.isEmpty {
-                let sourceFile = SourceFileSyntax {
+                let sourceFile = try SourceFileSyntax {
                     buildDateHelpersImportDecl(for: models.values)
 
-                    ExtensionDeclSyntax("extension \(qualifiedName)") {
+                    try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                         for (model, metadata) in models {
-                            buildGeneralModelDecl(for: model, metadata: metadata)
+                            try buildGeneralModelDecl(for: model, metadata: metadata)
                         }
                     }
                 }.withCopyrightHeader()
@@ -114,18 +114,18 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                     let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
-                    let sourceFile = SourceFileSyntax {
+                    let sourceFile = try SourceFileSyntax {
                         buildDateHelpersImportDecl(for: [input, output])
                         if pagination != nil {
-                            ImportDeclSyntax("import TecoPaginationHelpers")
+                            DeclSyntax("import TecoPaginationHelpers")
                         }
 
                         let inputMembers = input.members.filter({ $0.type != .binary })
                         let discardableOutput = output.members.count == 1
 
-                        ExtensionDeclSyntax("extension \(qualifiedName)") {
-                            buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
-                            buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
+                        try ExtensionDeclSyntax("extension \(raw: serviceName)") {
+                            try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
+                            try buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
 
                             buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
                             buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
@@ -150,32 +150,30 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                 // MARK: Generate base error source
 
-                let baseErrorName = "\(qualifiedName)Error"
                 let errorOutputDir = outputDir.appendingPathComponent("errors", isDirectory: true)
                 try ensureDirectory(at: errorOutputDir)
 
                 let errorDomains = getErrorDomains(from: errors)
                 do {
-                    let errorType = "TC\(baseErrorName)"
-                    let sourceFile = SourceFileSyntax {
-                        buildServiceErrorTypeDecl(qualifiedName)
-                        buildErrorStructDecl(errorType, domains: errorDomains, errorMap: generateErrorMap(from: errors), baseErrorShortname: baseErrorName)
+                    let sourceFile = try SourceFileSyntax {
+                        try buildServiceErrorTypeDecl(serviceName)
+                        try buildErrorStructDecl("TC\(serviceName)Error", domains: errorDomains, errorMap: generateErrorMap(from: errors), serviceName: serviceName)
                     }.withCopyrightHeader()
 
-                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).swift"))
+                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(serviceName)Error.swift"))
                 }
 
                 // MARK: Generate error domain sources
 
                 for domain in errorDomains {
                     let errorMap = generateDomainedErrorMap(from: errors, for: domain)
-                    let sourceFile = SourceFileSyntax {
-                        ExtensionDeclSyntax("extension TC\(baseErrorName)") {
-                            buildErrorStructDecl(domain, errorMap: errorMap, baseErrorShortname: baseErrorName)
+                    let sourceFile = try SourceFileSyntax {
+                        try ExtensionDeclSyntax("extension TC\(raw: serviceName)Error") {
+                            try buildErrorStructDecl(domain, errorMap: errorMap, serviceName: serviceName)
                         }
                     }.withCopyrightHeader()
 
-                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(baseErrorName).\(domain).swift"))
+                    try sourceFile.save(to: errorOutputDir.appendingPathComponent("\(serviceName)Error.\(domain).swift"))
                 }
             }
         }

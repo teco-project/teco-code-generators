@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/apple/swift-syntax.git", revision: "abc66e0e5661e6f90b1c24feb3af5da98cc690a0"),
+        .package(url: "https://github.com/apple/swift-syntax.git", exact: "509.0.0-swift-5.9-DEVELOPMENT-SNAPSHOT-2023-03-27-a"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
         .package(url: "https://github.com/teco-project/teco-core.git", from: "0.4.0"),
