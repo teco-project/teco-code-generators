@@ -1,8 +1,6 @@
 import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import class Foundation.Process
-import class Foundation.ProcessInfo
 import TecoCodeGeneratorCommons
 
 @main
@@ -21,72 +19,50 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     @Option(name: .long)
     var tecoCoreRequirement: String = #".upToNextMinor(from: "0.5.0-beta.1")"#
 
-    @Option(name: .short, help: "Maximum jobs to execute in parallel")
-    var jobs: Int = ProcessInfo.processInfo.processorCount
-
     @Flag
     var dryRun: Bool = false
 
-    func generate() throws {
-        var targets: [(service: String, version: String)] = []
-
+    func generate() async throws {
         let serviceDirectories = try contentsOfDirectory(at: modelDir.appendingPathComponent("services"), subdirectoryOnly: true)
 
         if serviceGenerator != nil {
             try ensureDirectory(at: packageDir.appendingPathComponent("Sources"), empty: true)
         }
 
-        var generatorProcesses: [Process] = []
+        let errorFile = {
+            let url = modelDir.appendingPathComponent("error-codes.json")
+            return fileExists(at: url) ? url : nil
+        }()
 
-        for (index, service) in serviceDirectories.enumerated() {
-            let versionedDirectories = try contentsOfDirectory(at: service, subdirectoryOnly: true)
-            for version in versionedDirectories {
-                let manifestJSON = version.appendingPathComponent("api.json")
-                guard fileExists(at: manifestJSON) else {
-                    fatalError("api.json not found in \(version.path)")
-                }
-                targets.append((service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst()))
-
-                // TODO: Service generation with imported API
-                if let serviceGenerator {
-                    let sourceDirectory = packageDir
-                        .appendingPathComponent("Sources")
-                        .appendingPathComponent("Teco")
-                        .appendingPathComponent(service.lastPathComponent.upperFirst())
-                        .appendingPathComponent(version.lastPathComponent.upperFirst())
-
-                    let process = Process()
-                    process.executableURL = serviceGenerator
-                    process.arguments = [
-                        "--source=\(manifestJSON.path)",
-                        "--output-dir=\(sourceDirectory.path)",
-                    ]
-                    if dryRun {
-                        process.arguments?.append("--dry-run")
+        let targets: [Target] = try await withThrowingTaskGroup(of: Target.self) { taskGroup in
+            for service in serviceDirectories {
+                let versionedDirectories = try contentsOfDirectory(at: service, subdirectoryOnly: true)
+                for version in versionedDirectories {
+                    let manifestJSON = version.appendingPathComponent("api.json")
+                    guard fileExists(at: manifestJSON) else {
+                        fatalError("api.json not found in \(version.path)")
                     }
 
-                    let errorFilePath = modelDir.appendingPathComponent("error-codes.json")
-                    if fileExists(at: errorFilePath) {
-                        process.arguments?.append("--error-file=\(errorFilePath.path)")
-                    }
+                    if let serviceGenerator {
+                        let sourceDirectory = packageDir
+                            .appendingPathComponent("Sources")
+                            .appendingPathComponent("Teco")
+                            .appendingPathComponent(service.lastPathComponent.upperFirst())
+                            .appendingPathComponent(version.lastPathComponent.upperFirst())
 
-                    process.terminationHandler = { process in
-                        if process.terminationStatus != 0 {
-                            print(process.arguments ?? [], process.terminationReason)
+                        taskGroup.addTask {
+                            try await generateService(with: serviceGenerator, manifest: manifestJSON, to: sourceDirectory, errorFile: errorFile)
+                        }
+                    } else {
+                        taskGroup.addTask {
+                            (service.lastPathComponent.upperFirst(), version.lastPathComponent.upperFirst())
                         }
                     }
-
-                    if index >= self.jobs {
-                        generatorProcesses.removeFirst().waitUntilExit()
-                    }
-
-                    try process.run()
-                    generatorProcesses.append(process)
                 }
             }
+            return try await taskGroup.reduce(into: [], { $0.append($1) })
+                .sorted { $0.service == $1.service ? $0.version > $1.version : $0.service < $1.service }
         }
-
-        targets.sort { $0.service == $1.service ? $0.version > $1.version : $0.service < $1.service }
 
         let packageSwiftFile = SourceFileSyntax {
             DeclSyntax("""
@@ -121,10 +97,5 @@ struct TecoPackageGenerator: TecoCodeGenerator {
         }
 
         try packageSwiftFile.save(to: packageDir.appendingPathComponent("Package.swift"))
-
-        // Wait for service generation to complete.
-        for process in generatorProcesses {
-            process.waitUntilExit()
-        }
     }
 }
