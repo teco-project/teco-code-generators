@@ -26,7 +26,11 @@ extension TecoCodeGenerator {
     public func run() async throws {
         try await GeneratorContext.$generator.withValue("\(Self.self)") {
             try await GeneratorContext.$developingYears.withValue(Self.developingYears) {
-                try await GeneratorContext.$dryRun.withValue(dryRun, operation: generate)
+                if dryRun {
+                    try await GeneratorContext.$dryRun.withValue(true, operation: generate)
+                } else {
+                    try await generate()
+                }
             }
         }
     }
