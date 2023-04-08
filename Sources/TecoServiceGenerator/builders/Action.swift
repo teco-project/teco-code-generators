@@ -19,8 +19,20 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
     }
 }
 
-private func buildExecuteExpr(for action: String) -> ExprSyntax {
-    ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
+private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
+    guard metadata.status != .deprecated else {
+        return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
+    }
+    let executeExpr = ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
+    return async ? ExprSyntax("try await \(executeExpr).get()") : executeExpr
+}
+
+private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Action, input: [APIObject.Member], async: Bool = false) -> ExprSyntax {
+    guard metadata.status != .deprecated else {
+        return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
+    }
+    let executeExpr = ExprSyntax("self.\(raw: action.lowerFirst())(\(buildInputExpr(for: metadata.input, members: input)), region: region, logger: logger, on: eventLoop)")
+    return async ? ExprSyntax("try await \(executeExpr)") : executeExpr
 }
 
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
@@ -33,7 +45,7 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
 }
 
 private func buildInputExpr(for type: String, members: [APIObject.Member]) -> ExprSyntax {
-    FunctionCallExprSyntax(calledExpression: ExprSyntax("\(raw: type)"), leftParen: .leftParenToken(), rightParen: .rightParenToken()) {
+    FunctionCallExprSyntax(calledExpression: ExprSyntax(".init"), leftParen: .leftParenToken(), rightParen: .rightParenToken()) {
         for member in members {
             TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
         }
@@ -45,7 +57,7 @@ func buildActionDecl(for action: String, metadata: APIModel.Action, discardableR
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            \(buildExecuteExpr(for: action))
+            \(buildExecuteExpr(for: action, metadata: metadata))
         }
         """)
 }
@@ -55,7 +67,7 @@ func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discard
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            try await \(buildExecuteExpr(for: action)).get()
+            \(buildExecuteExpr(for: action, metadata: metadata, async: true))
         }
         """)
 }
@@ -65,8 +77,7 @@ func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inpu
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
-            return \(buildExecuteExpr(for: action))
+            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers))
         }
         """)
 }
@@ -76,8 +87,7 @@ func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action,
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
         public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
-            return try await \(buildExecuteExpr(for: action)).get()
+            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers, async: true))
         }
         """)
 }
