@@ -40,7 +40,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
         }
 
         try ensureDirectory(at: outputDir, empty: true)
-        
+
         try ServiceContext.$objects.withValue(service.objects) {
 
             // MARK: Verify data model
@@ -67,11 +67,22 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 models.sort()
             }
 
+            // MARK: Generate re-exported interface
+
+            do {
+                let sourceFile = SourceFileSyntax {
+                    let imports = buildTecoCoreImportDecls(for: .exports(ServiceContext.objects.values))
+                    IfConfigDeclSyntax(clauses: [.init(poundKeyword: .poundIfKeyword(), condition: ExprSyntax("!BUILDING_DOCC"), elements: .statements(imports))])
+                }.withCopyrightHeader()
+
+                try sourceFile.save(to: outputDir.appendingPathComponent("exports.swift"))
+            }
+
             // MARK: Generate client source
 
             do {
                 let sourceFile = try SourceFileSyntax {
-                    DeclSyntax("@_exported import TecoCore")
+                    buildTecoCoreImportDecls(for: .client)
                     try buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                     try buildServicePatchSupportDecl(for: serviceName)
                 }.withCopyrightHeader()
@@ -83,7 +94,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             if !models.isEmpty {
                 let sourceFile = try SourceFileSyntax {
-                    buildDateHelpersImportDecl(for: models.values)
+                    buildTecoCoreImportDecls(for: .models(models.values))
 
                     try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                         for (model, metadata) in models {
@@ -115,10 +126,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                     let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
                     let sourceFile = try SourceFileSyntax {
-                        buildDateHelpersImportDecl(for: [input, output])
-                        if pagination != nil {
-                            DeclSyntax("import TecoPaginationHelpers")
-                        }
+                        buildTecoCoreImportDecls(for: .action(input: input, output: output, pagination: pagination != nil))
 
                         let inputMembers = input.members.filter({ $0.type != .binary })
                         let discardableOutput = output.members.count == 1
@@ -156,6 +164,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 let errorDomains = getErrorDomains(from: errors)
                 do {
                     let sourceFile = try SourceFileSyntax {
+                        buildTecoCoreImportDecls(for: .error)
+
                         try buildServiceErrorTypeDecl(serviceName)
                         try buildErrorStructDecl("TC\(serviceName)Error", domains: errorDomains, errorMap: generateErrorMap(from: errors), serviceName: serviceName)
                     }.withCopyrightHeader()
@@ -168,6 +178,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 for domain in errorDomains {
                     let errorMap = generateDomainedErrorMap(from: errors, for: domain)
                     let sourceFile = try SourceFileSyntax {
+                        buildTecoCoreImportDecls(for: .error)
+
                         try ExtensionDeclSyntax("extension TC\(raw: serviceName)Error") {
                             try buildErrorStructDecl(domain, errorMap: errorMap, serviceName: serviceName)
                         }

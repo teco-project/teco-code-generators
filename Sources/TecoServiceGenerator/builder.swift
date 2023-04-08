@@ -2,11 +2,64 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-@CodeBlockItemListBuilder
-func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeBlockItemListSyntax {
-    if models.flatMap(\.members).contains(where: { $0.dateType != nil }) {
-        DeclSyntax("@_exported import struct Foundation.Date")
-        DeclSyntax("import TecoDateHelpers")
+enum ImportContext {
+    case client
+    case action(input: APIObject, output: APIObject, pagination: Bool)
+    case models(any Collection<APIObject>)
+    case error
+    case exports(any Collection<APIObject>)
+}
+
+func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSyntax {
+    let date = {
+        let members: [APIObject.Member]
+        if case .action(let input, let output, _) = context {
+            members = input.members + output.members
+        } else if case .models(let models) = context {
+            members = models.flatMap(\.members)
+        } else if case .exports(let models) = context {
+            members = models.flatMap(\.members)
+        } else {
+            return false
+        }
+        return members.contains(where: { $0.dateType != nil })
+    }()
+
+    return CodeBlockItemListSyntax {
+        switch context {
+        case .exports:
+            DeclSyntax("@_exported import TecoCore")
+            if date {
+                DeclSyntax("@_exported import struct Foundation.Date")
+                    .with(\.leadingTrivia, .newlines(2))
+            }
+        case .error:
+            DeclSyntax("import TecoCore")
+        case .client:
+            DeclSyntax("import NIOCore")
+            DeclSyntax("import TecoCore")
+        case .models:
+            if date {
+                DeclSyntax("import struct Foundation.Date")
+            }
+            DeclSyntax("import TecoCore")
+            if date {
+                DeclSyntax("import TecoDateHelpers")
+            }
+        case .action(_, _, let pagination):
+            if date {
+                DeclSyntax("import struct Foundation.Date")
+            }
+            DeclSyntax("import Logging")
+            DeclSyntax("import NIOCore")
+            DeclSyntax("import TecoCore")
+            if date {
+                DeclSyntax("import TecoDateHelpers")
+            }
+            if pagination {
+                DeclSyntax("import TecoPaginationHelpers")
+            }
+        }
     }
 }
 
@@ -26,11 +79,11 @@ func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws ->
             public let config: TCServiceConfig
             """)
 
-        buildServiceInitializerDeclSyntax(with: model.metadata, hasError: hasError)
+        buildServiceInitializerDecl(with: model.metadata, hasError: hasError)
     }
 }
 
-func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
+func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
     DeclSyntax("""
         /// Initialize the ``\(raw: serviceMetadata.shortName.upperFirst())`` client.
         ///
