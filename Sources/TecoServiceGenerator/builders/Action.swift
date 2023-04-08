@@ -19,6 +19,13 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
     }
 }
 
+@TupleExprElementListBuilder
+private func buildInputParameterList(for members: [APIObject.Member]) -> TupleExprElementListSyntax {
+    for member in members {
+        TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
+    }
+}
+
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
     guard metadata.status != .deprecated else {
         return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
@@ -31,8 +38,8 @@ private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Act
     guard metadata.status != .deprecated else {
         return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
     }
-    let executeExpr = ExprSyntax("self.\(raw: action.lowerFirst())(\(buildInputExpr(for: metadata.input, members: input)), region: region, logger: logger, on: eventLoop)")
-    return async ? ExprSyntax("try await \(executeExpr)") : executeExpr
+    let actionExpr = ExprSyntax("self.\(raw: action.lowerFirst())(.init(\(buildInputParameterList(for: input))), region: region, logger: logger, on: eventLoop)")
+    return async ? ExprSyntax("try await \(actionExpr)") : actionExpr
 }
 
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
@@ -42,14 +49,6 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
         }
     }
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
-}
-
-private func buildInputExpr(for type: String, members: [APIObject.Member]) -> ExprSyntax {
-    FunctionCallExprSyntax(calledExpression: ExprSyntax(".init"), leftParen: .leftParenToken(), rightParen: .rightParenToken()) {
-        for member in members {
-            TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
-        }
-    }.as(ExprSyntax.self)!
 }
 
 func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> DeclSyntax {
