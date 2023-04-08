@@ -68,7 +68,7 @@ private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Act
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
     let extraArgs = TupleExprElementListSyntax {
         for (label, value) in extraArguments {
-            TupleExprElementSyntax(label: .identifier(label), colon: .colonToken(), expression: ExprSyntax("\(raw: value)"), trailingComma: .commaToken())
+            TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: value)")).with(\.trailingComma, .commaToken())
         }
     }
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
