@@ -1,3 +1,5 @@
+import SwiftSyntax
+
 enum ServiceContext {
     @TaskLocal
     static var objects: [String : APIObject] = [:]
@@ -8,3 +10,8 @@ func skipAuthorizationParameter(for action: String) -> String {
     return action.hasPrefix("AssumeRoleWith") ? ", skipAuthorization: true" : ""
 }
 
+extension SyntaxProtocol {
+    func spaced() -> Self {
+        self.with(\.leadingTrivia, .space)
+    }
+}

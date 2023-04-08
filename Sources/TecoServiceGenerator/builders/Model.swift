@@ -2,7 +2,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildInitializerParameterList(for members: [APIObject.Member], packed: Bool = false) -> FunctionParameterListSyntax {
+func buildInitializerParameterList(for members: [APIObject.Member]) -> FunctionParameterListSyntax {
     func getDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
         let type = getSwiftType(for: member, isInitializer: true)
         if let defaultValue = member.default, member.required {
@@ -25,11 +25,10 @@ func buildInitializerParameterList(for members: [APIObject.Member], packed: Bool
     return FunctionParameterListSyntax {
         for member in members {
             FunctionParameterSyntax(
-                firstName: TokenSyntax("\(raw: member.identifier)"),
+                firstName: "\(raw: member.identifier)",
                 colon: .colonToken(),
                 type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
-                defaultArgument: getDefaultArgument(for: member).map { .init(value: $0) },
-                trailingComma: packed ? .commaToken() : nil
+                defaultArgument: getDefaultArgument(for: member).map { .init(value: $0) }
             )
         }
     }

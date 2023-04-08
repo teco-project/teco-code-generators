@@ -127,17 +127,17 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                             try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
                             try buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
 
-                            buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
-                            buildAsyncActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)
 
-                            buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
-                            buildUnpackedAsyncActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput, async: true)
 
-                            if metadata.status != .deprecated, pagination != nil {
-                                buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
-                                buildPaginatedActionWithCallbackDecl(for: action, metadata: metadata, output: output)
+                            if pagination != nil {
+                                try buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
+                                try buildPaginatedActionWithCallbackDecl(for: action, metadata: metadata, output: output)
 
-                                buildActionPaginatorDecl(for: action, metadata: metadata, output: output)
+                                try buildActionPaginatorDecl(for: action, metadata: metadata, output: output)
                             }
                         }
                     }.withCopyrightHeader()

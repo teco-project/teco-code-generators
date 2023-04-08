@@ -14,13 +14,55 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
         }
         AttributeSyntax("@inlinable")
         if discardableResult {
-            AttributeSyntax("@discardableResult").with(\.leadingTrivia, .space)
+            AttributeSyntax("@discardableResult").spaced()
         }
     }
 }
 
-private func buildExecuteExpr(for action: String) -> ExprSyntax {
-    ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
+private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> ExprSyntax? {
+    metadata.status == .deprecated ? #"fatalError("\#(raw: action) is no longer available.")"# : nil
+}
+
+@TupleExprElementListBuilder
+private func buildInputParameterList(for members: [APIObject.Member]) -> TupleExprElementListSyntax {
+    for member in members {
+        TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
+    }
+}
+
+private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callbackWith output: TypeSyntax? = nil) -> ParameterClauseSyntax {
+    ParameterClauseSyntax {
+        if let input {
+            buildInitializerParameterList(for: input)
+        } else {
+            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
+        }
+        FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: ExprSyntax("nil")))
+        if let output {
+            FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
+        }
+        FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: ExprSyntax("nil")))
+    }
+}
+
+private func buildActionSignatureExpr(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, returning output: TypeSyntax? = nil, async: Bool = false, hasCallback: Bool = false) -> FunctionSignatureSyntax {
+    precondition(!async || !hasCallback, "We shouldn't mix async/await with callbacks.")
+    let output = output ?? "\(raw: action.output)"
+    let returnType: TypeSyntax = hasCallback ? "Void" : output
+    let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
+    let effects = async ? DeclEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async).spaced(), throwsSpecifier: .keyword(.throws).spaced()) : nil
+    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? returnType : "EventLoopFuture<\(returnType)>"))
+}
+
+private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
+    let executeExpr = ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
+    return async ? ExprSyntax("try await \(executeExpr).get()") : executeExpr
+}
+
+private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Action, input: [APIObject.Member], async: Bool = false) -> ExprSyntax {
+    let actionExpr = ExprSyntax("self.\(raw: action.lowerFirst())(.init(\(buildInputParameterList(for: input))), region: region, logger: logger, on: eventLoop)")
+    return async ? ExprSyntax("try await \(actionExpr)") : actionExpr
 }
 
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
@@ -32,84 +74,51 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
-private func buildInputExpr(for type: String, members: [APIObject.Member]) -> ExprSyntax {
-    FunctionCallExprSyntax(calledExpression: ExprSyntax("\(raw: type)"), leftParen: .leftParenToken(), rightParen: .rightParenToken()) {
-        for member in members {
-            TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
-        }
-    }.as(ExprSyntax.self)!
-}
-
-func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
+func buildActionDecl(for action: String, metadata: APIModel.Action, unpacking input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            \(buildExecuteExpr(for: action))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardable))
+        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, unpacking: input, async: async))
+        """) {
+            if let unavailableBody = buildUnavailableBody(for: action, metadata: metadata) {
+                unavailableBody
+            } else if let input {
+                buildUnpackedExecuteExpr(for: action, metadata: metadata, input: input, async: async)
+            } else {
+                buildExecuteExpr(for: action, metadata: metadata, async: async)
+            }
         }
-        """)
 }
 
-func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            try await \(buildExecuteExpr(for: action)).get()
-        }
-        """)
-}
-
-func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
-            return \(buildExecuteExpr(for: action))
-        }
-        """)
-}
-
-func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            let input = \(buildInputExpr(for: metadata.input, members: inputMembers))
-            return try await \(buildExecuteExpr(for: action)).get()
-        }
-        """)
-}
-
-func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<(\(raw: output.totalCountType), [\(raw: output.itemType!)])> {
-            \(buildPaginateExpr(for: action))
-        }
-        """)
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, returning: "(\(raw: output.totalCountType), [\(raw: output.itemType!)])"))
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action)
+    }
 }
 
-func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
-        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, onResponse: @escaping (\(raw: metadata.output), EventLoop) -> EventLoopFuture<Bool>, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<Void> {
-            \(buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")]))
-        }
-        """)
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, hasCallback: true))
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")])
+    }
 }
 
-func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         ///
         /// - Returns: `AsyncSequence`s of `\(raw: output.itemType!)` and `\(raw: metadata.output)` that can be iterated over asynchronously on demand.
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginator(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
-            TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)
-        }
-        """)
+        public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)>
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ??
+            "TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)"
+    }
 }
