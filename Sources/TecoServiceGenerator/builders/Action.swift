@@ -14,7 +14,7 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
         }
         AttributeSyntax("@inlinable")
         if discardableResult {
-            AttributeSyntax("@discardableResult").with(\.leadingTrivia, .space)
+            AttributeSyntax("@discardableResult").spaced()
         }
     }
 }
@@ -24,6 +24,22 @@ private func buildInputParameterList(for members: [APIObject.Member]) -> TupleEx
     for member in members {
         TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
     }
+}
+
+private func buildActionSignatureExpr(for action: APIModel.Action, inputs: [APIObject.Member]? = nil, async: Bool) -> FunctionSignatureSyntax {
+    let parameters = ParameterClauseSyntax {
+        if let inputs {
+            buildInitializerParameterList(for: inputs)
+        } else {
+            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
+        }
+        FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: ExprSyntax("nil")))
+        FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: ExprSyntax("nil")))
+    }
+    let effects = async ? DeclEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async).spaced(), throwsSpecifier: .keyword(.throws).spaced()) : nil
+    let output: TypeSyntax = async ? "\(raw: action.output)" : "EventLoopFuture<\(raw: action.output)>"
+    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: output))
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
@@ -51,42 +67,22 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
-func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> DeclSyntax {
+func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool, async: Bool = false) -> DeclSyntax {
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            \(buildExecuteExpr(for: action, metadata: metadata))
+        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, async: async)) {
+            \(buildExecuteExpr(for: action, metadata: metadata, async: async))
         }
         """)
 }
 
-func buildAsyncActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool) -> DeclSyntax {
+func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool, async: Bool = false) -> DeclSyntax {
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            \(buildExecuteExpr(for: action, metadata: metadata, async: true))
-        }
-        """)
-}
-
-func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> \(raw: "EventLoopFuture<\(metadata.output)>") {
-            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers))
-        }
-        """)
-}
-
-func buildUnpackedAsyncActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())(\(buildInitializerParameterList(for: inputMembers, packed: true))region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) async throws -> \(raw: metadata.output) {
-            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers, async: true))
+        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, inputs: inputMembers, async: async)) {
+            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers, async: async))
         }
         """)
 }
@@ -121,4 +117,10 @@ func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, out
             TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)
         }
         """)
+}
+
+extension SyntaxProtocol {
+    fileprivate func spaced() -> Self {
+        self.with(\.leadingTrivia, .space)
+    }
 }
