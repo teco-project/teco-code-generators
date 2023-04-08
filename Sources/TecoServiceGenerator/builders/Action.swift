@@ -26,20 +26,28 @@ private func buildInputParameterList(for members: [APIObject.Member]) -> TupleEx
     }
 }
 
-private func buildActionSignatureExpr(for action: APIModel.Action, inputMembers: [APIObject.Member]? = nil, async: Bool) -> FunctionSignatureSyntax {
-    let parameters = ParameterClauseSyntax {
-        if let inputMembers {
-            buildInitializerParameterList(for: inputMembers)
+private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callback: Bool = false) -> ParameterClauseSyntax {
+    ParameterClauseSyntax {
+        if let input {
+            buildInitializerParameterList(for: input)
         } else {
             FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
         }
         FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: ExprSyntax("nil")))
+        if callback {
+            FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(raw: action.output), EventLoop) -> EventLoopFuture<Bool>"))
+        }
         FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
         FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: ExprSyntax("nil")))
     }
+}
+
+private func buildActionSignatureExpr(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, async: Bool, hasCallback: Bool = false) -> FunctionSignatureSyntax {
+    precondition(!async || !hasCallback, "We shouldn't mix async/await with callbacks.")
+    let parameters = buildActionParameterList(for: action, unpacking: input, callback: hasCallback)
     let effects = async ? DeclEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async).spaced(), throwsSpecifier: .keyword(.throws).spaced()) : nil
-    let output: TypeSyntax = async ? "\(raw: action.output)" : "EventLoopFuture<\(raw: action.output)>"
-    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: output))
+    let output: TypeSyntax = hasCallback ? "Void" : "\(raw: action.output)"
+    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? output : "EventLoopFuture<\(output)>"))
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
@@ -61,11 +69,11 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
-func buildActionDecl(for action: String, metadata: APIModel.Action, input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false) throws -> FunctionDeclSyntax {
+func buildActionDecl(for action: String, metadata: APIModel.Action, unpacking input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false) throws -> FunctionDeclSyntax {
     try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: discardable))
-        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, inputMembers: input, async: async))
+        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, unpacking: input, async: async))
         """) {
             if metadata.status == .deprecated {
                 ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
@@ -81,7 +89,7 @@ func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, out
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<(\(raw: output.totalCountType), [\(raw: output.itemType!)])> {
+        public func \(raw: action.lowerFirst())Paginated\(buildActionParameterList(for: metadata)) -> EventLoopFuture<(\(raw: output.totalCountType), [\(raw: output.itemType!)])> {
             \(buildPaginateExpr(for: action))
         }
         """)
@@ -91,7 +99,7 @@ func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
-        public func \(raw: action.lowerFirst())Paginated(_ input: \(raw: metadata.input), region: TCRegion? = nil, onResponse: @escaping (\(raw: metadata.output), EventLoop) -> EventLoopFuture<Bool>, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> EventLoopFuture<Void> {
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, async: false, hasCallback: true)) {
             \(buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")]))
         }
         """)
@@ -103,7 +111,7 @@ func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, out
         ///
         /// - Returns: `AsyncSequence`s of `\(raw: output.itemType!)` and `\(raw: metadata.output)` that can be iterated over asynchronously on demand.
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginator(_ input: \(raw: metadata.input), region: TCRegion? = nil, logger: Logger = TCClient.loggingDisabled, on eventLoop: EventLoop? = nil) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
+        public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
             TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)
         }
         """)
