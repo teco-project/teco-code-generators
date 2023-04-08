@@ -122,8 +122,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/teco-project/teco-core.git",
       "state" : {
-        "revision" : "e7e91edfa299cd22649a0060d9922bc62df6419c",
-        "version" : "0.4.0"
+        "revision" : "5e4fb1db7a9f1260563f6c6112393b203bd03df5",
+        "version" : "0.5.0"
       }
     }
   ],
