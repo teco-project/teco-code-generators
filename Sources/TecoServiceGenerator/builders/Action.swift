@@ -26,10 +26,10 @@ private func buildInputParameterList(for members: [APIObject.Member]) -> TupleEx
     }
 }
 
-private func buildActionSignatureExpr(for action: APIModel.Action, inputs: [APIObject.Member]? = nil, async: Bool) -> FunctionSignatureSyntax {
+private func buildActionSignatureExpr(for action: APIModel.Action, inputMembers: [APIObject.Member]? = nil, async: Bool) -> FunctionSignatureSyntax {
     let parameters = ParameterClauseSyntax {
-        if let inputs {
-            buildInitializerParameterList(for: inputs)
+        if let inputMembers {
+            buildInitializerParameterList(for: inputMembers)
         } else {
             FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
         }
@@ -43,17 +43,11 @@ private func buildActionSignatureExpr(for action: APIModel.Action, inputs: [APIO
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
-    guard metadata.status != .deprecated else {
-        return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
-    }
     let executeExpr = ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
     return async ? ExprSyntax("try await \(executeExpr).get()") : executeExpr
 }
 
 private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Action, input: [APIObject.Member], async: Bool = false) -> ExprSyntax {
-    guard metadata.status != .deprecated else {
-        return ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
-    }
     let actionExpr = ExprSyntax("self.\(raw: action.lowerFirst())(.init(\(buildInputParameterList(for: input))), region: region, logger: logger, on: eventLoop)")
     return async ? ExprSyntax("try await \(actionExpr)") : actionExpr
 }
@@ -67,24 +61,20 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
-func buildActionDecl(for action: String, metadata: APIModel.Action, discardableResult: Bool, async: Bool = false) -> DeclSyntax {
-    DeclSyntax("""
+func buildActionDecl(for action: String, metadata: APIModel.Action, input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, async: async)) {
-            \(buildExecuteExpr(for: action, metadata: metadata, async: async))
+        \(buildActionAttributeList(for: metadata, discardableResult: discardable))
+        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, inputMembers: input, async: async))
+        """) {
+            if metadata.status == .deprecated {
+                ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
+            } else if let input {
+                buildUnpackedExecuteExpr(for: action, metadata: metadata, input: input, async: async)
+            } else {
+                buildExecuteExpr(for: action, metadata: metadata, async: async)
+            }
         }
-        """)
-}
-
-func buildUnpackedActionDecl(for action: String, metadata: APIModel.Action, inputMembers: [APIObject.Member], discardableResult: Bool, async: Bool = false) -> DeclSyntax {
-    DeclSyntax("""
-        \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
-        \(buildActionAttributeList(for: metadata, discardableResult: discardableResult))
-        public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, inputs: inputMembers, async: async)) {
-            \(buildUnpackedExecuteExpr(for: action, metadata: metadata, input: inputMembers, async: async))
-        }
-        """)
 }
 
 func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {

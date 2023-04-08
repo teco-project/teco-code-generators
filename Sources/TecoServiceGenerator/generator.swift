@@ -127,11 +127,11 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                             try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
                             try buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
 
-                            buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput)
-                            buildActionDecl(for: action, metadata: metadata, discardableResult: discardableOutput, async: true)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)
 
-                            buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput)
-                            buildUnpackedActionDecl(for: action, metadata: metadata, inputMembers: inputMembers, discardableResult: discardableOutput, async: true)
+                            try buildActionDecl(for: action, metadata: metadata, input: inputMembers, discardable: discardableOutput)
+                            try buildActionDecl(for: action, metadata: metadata, input: inputMembers, discardable: discardableOutput, async: true)
 
                             if metadata.status != .deprecated, pagination != nil {
                                 buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
