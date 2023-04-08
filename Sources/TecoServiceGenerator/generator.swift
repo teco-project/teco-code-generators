@@ -71,7 +71,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             do {
                 let sourceFile = SourceFileSyntax {
-                    let imports = buildTecoCoreImportDecls(models: ServiceContext.objects.values, exported: true)
+                    let imports = buildTecoCoreImportDecls(for: .exports(ServiceContext.objects.values))
                     IfConfigDeclSyntax(clauses: [.init(poundKeyword: .poundIfKeyword(), condition: ExprSyntax("!BUILDING_DOCC"), elements: .statements(imports))])
                 }.withCopyrightHeader()
 
@@ -82,7 +82,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             do {
                 let sourceFile = try SourceFileSyntax {
-                    buildTecoCoreImportDecls()
+                    buildTecoCoreImportDecls(for: .client)
                     try buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                     try buildServicePatchSupportDecl(for: serviceName)
                 }.withCopyrightHeader()
@@ -94,7 +94,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
             if !models.isEmpty {
                 let sourceFile = try SourceFileSyntax {
-                    buildTecoCoreImportDecls(models: models.values)
+                    buildTecoCoreImportDecls(for: .models(models.values))
 
                     try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                         for (model, metadata) in models {
@@ -126,7 +126,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                     let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
                     let sourceFile = try SourceFileSyntax {
-                        buildTecoCoreImportDecls(models: [input, output], pagination: pagination)
+                        buildTecoCoreImportDecls(for: .action(input: input, output: output, pagination: pagination != nil))
 
                         let inputMembers = input.members.filter({ $0.type != .binary })
                         let discardableOutput = output.members.count == 1
@@ -164,7 +164,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 let errorDomains = getErrorDomains(from: errors)
                 do {
                     let sourceFile = try SourceFileSyntax {
-                        buildTecoCoreImportDecls()
+                        buildTecoCoreImportDecls(for: .error)
 
                         try buildServiceErrorTypeDecl(serviceName)
                         try buildErrorStructDecl("TC\(serviceName)Error", domains: errorDomains, errorMap: generateErrorMap(from: errors), serviceName: serviceName)
@@ -178,7 +178,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 for domain in errorDomains {
                     let errorMap = generateDomainedErrorMap(from: errors, for: domain)
                     let sourceFile = try SourceFileSyntax {
-                        buildTecoCoreImportDecls()
+                        buildTecoCoreImportDecls(for: .error)
 
                         try ExtensionDeclSyntax("extension TC\(raw: serviceName)Error") {
                             try buildErrorStructDecl(domain, errorMap: errorMap, serviceName: serviceName)

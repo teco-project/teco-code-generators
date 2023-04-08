@@ -2,28 +2,61 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildTecoCoreImportDecls(models: some Collection<APIObject> = [], pagination: Pagination? = nil, exported: Bool = false) -> CodeBlockItemListSyntax {
-    let requireDatehelpers = models.flatMap(\.members).contains(where: { $0.dateType != nil })
-    let requirePaginationHelpers = pagination != nil
+enum ImportContext {
+    case client
+    case action(input: APIObject, output: APIObject, pagination: Bool)
+    case models(any Collection<APIObject>)
+    case error
+    case exports(any Collection<APIObject>)
+}
 
-    if exported {
-        return CodeBlockItemListSyntax {
+func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSyntax {
+    let date = {
+        let members: [APIObject.Member]
+        if case .action(let input, let output, _) = context {
+            members = input.members + output.members
+        } else if case .models(let models) = context {
+            members = models.flatMap(\.members)
+        } else if case .exports(let models) = context {
+            members = models.flatMap(\.members)
+        } else {
+            return false
+        }
+        return members.contains(where: { $0.dateType != nil })
+    }()
+
+    return CodeBlockItemListSyntax {
+        switch context {
+        case .exports:
             DeclSyntax("@_exported import TecoCore")
-            if requireDatehelpers {
+            if date {
                 DeclSyntax("@_exported import struct Foundation.Date")
                     .with(\.leadingTrivia, .newlines(2))
             }
-        }
-    } else {
-        return CodeBlockItemListSyntax {
-            if requireDatehelpers {
+        case .error:
+            DeclSyntax("import TecoCore")
+        case .client:
+            DeclSyntax("import NIOCore")
+            DeclSyntax("import TecoCore")
+        case .models:
+            if date {
                 DeclSyntax("import struct Foundation.Date")
             }
             DeclSyntax("import TecoCore")
-            if requireDatehelpers {
+            if date {
                 DeclSyntax("import TecoDateHelpers")
             }
-            if requirePaginationHelpers {
+        case .action(_, _, let pagination):
+            if date {
+                DeclSyntax("import struct Foundation.Date")
+            }
+            DeclSyntax("import Logging")
+            DeclSyntax("import NIOCore")
+            DeclSyntax("import TecoCore")
+            if date {
+                DeclSyntax("import TecoDateHelpers")
+            }
+            if pagination {
                 DeclSyntax("import TecoPaginationHelpers")
             }
         }
