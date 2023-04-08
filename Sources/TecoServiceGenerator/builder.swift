@@ -5,16 +5,27 @@ import TecoCodeGeneratorCommons
 func buildTecoCoreImportDecls(models: some Collection<APIObject> = [], pagination: Pagination? = nil, exported: Bool = false) -> CodeBlockItemListSyntax {
     let requireDatehelpers = models.flatMap(\.members).contains(where: { $0.dateType != nil })
     let requirePaginationHelpers = pagination != nil
-    return CodeBlockItemListSyntax {
-        if requireDatehelpers {
-            DeclSyntax("@_exported import struct Foundation.Date")
+
+    if exported {
+        return CodeBlockItemListSyntax {
+            DeclSyntax("@_exported import TecoCore")
+            if requireDatehelpers {
+                DeclSyntax("@_exported import struct Foundation.Date")
+                    .with(\.leadingTrivia, .newlines(2))
+            }
         }
-        DeclSyntax("\(raw: exported ? "@_exported " : "")import TecoCore")
-        if requireDatehelpers {
-            DeclSyntax("import TecoDateHelpers")
-        }
-        if requirePaginationHelpers {
-            DeclSyntax("import TecoPaginationHelpers")
+    } else {
+        return CodeBlockItemListSyntax {
+            if requireDatehelpers {
+                DeclSyntax("import struct Foundation.Date")
+            }
+            DeclSyntax("import TecoCore")
+            if requireDatehelpers {
+                DeclSyntax("import TecoDateHelpers")
+            }
+            if requirePaginationHelpers {
+                DeclSyntax("import TecoPaginationHelpers")
+            }
         }
     }
 }

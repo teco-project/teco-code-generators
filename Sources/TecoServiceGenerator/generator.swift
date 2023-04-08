@@ -67,11 +67,22 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 models.sort()
             }
 
+            // MARK: Generate re-exported interface
+
+            do {
+                let sourceFile = SourceFileSyntax {
+                    let imports = buildTecoCoreImportDecls(models: ServiceContext.objects.values, exported: true)
+                    IfConfigDeclSyntax(clauses: [.init(poundKeyword: .poundIfKeyword(), condition: ExprSyntax("!BUILDING_DOCC"), elements: .statements(imports))])
+                }.withCopyrightHeader()
+
+                try sourceFile.save(to: outputDir.appendingPathComponent("exports.swift"))
+            }
+
             // MARK: Generate client source
 
             do {
                 let sourceFile = try SourceFileSyntax {
-                    buildTecoCoreImportDecls(exported: true)
+                    buildTecoCoreImportDecls()
                     try buildServiceDecl(with: service, withErrors: !errors.isEmpty)
                     try buildServicePatchSupportDecl(for: serviceName)
                 }.withCopyrightHeader()
