@@ -26,7 +26,7 @@ private func buildInputParameterList(for members: [APIObject.Member]) -> TupleEx
     }
 }
 
-private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callback: Bool = false) -> ParameterClauseSyntax {
+private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callbackWith output: TypeSyntax? = nil) -> ParameterClauseSyntax {
     ParameterClauseSyntax {
         if let input {
             buildInitializerParameterList(for: input)
@@ -34,20 +34,21 @@ private func buildActionParameterList(for action: APIModel.Action, unpacking inp
             FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
         }
         FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: ExprSyntax("nil")))
-        if callback {
-            FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(raw: action.output), EventLoop) -> EventLoopFuture<Bool>"))
+        if let output {
+            FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
         FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
         FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: ExprSyntax("nil")))
     }
 }
 
-private func buildActionSignatureExpr(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, async: Bool, hasCallback: Bool = false) -> FunctionSignatureSyntax {
+private func buildActionSignatureExpr(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, returning output: TypeSyntax? = nil, async: Bool = false, hasCallback: Bool = false) -> FunctionSignatureSyntax {
     precondition(!async || !hasCallback, "We shouldn't mix async/await with callbacks.")
-    let parameters = buildActionParameterList(for: action, unpacking: input, callback: hasCallback)
+    let output = output ?? "\(raw: action.output)"
+    let returnType: TypeSyntax = hasCallback ? "Void" : output
+    let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
     let effects = async ? DeclEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async).spaced(), throwsSpecifier: .keyword(.throws).spaced()) : nil
-    let output: TypeSyntax = hasCallback ? "Void" : "\(raw: action.output)"
-    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? output : "EventLoopFuture<\(output)>"))
+    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? returnType : "EventLoopFuture<\(returnType)>"))
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
@@ -89,7 +90,7 @@ func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, out
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginated\(buildActionParameterList(for: metadata)) -> EventLoopFuture<(\(raw: output.totalCountType), [\(raw: output.itemType!)])> {
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, returning: "(\(raw: output.totalCountType), [\(raw: output.itemType!)])")) {
             \(buildPaginateExpr(for: action))
         }
         """)
@@ -99,7 +100,7 @@ func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel
     DeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
-        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, async: false, hasCallback: true)) {
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, hasCallback: true)) {
             \(buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")]))
         }
         """)
