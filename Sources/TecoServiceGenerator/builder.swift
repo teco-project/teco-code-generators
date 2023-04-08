@@ -2,11 +2,20 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-@CodeBlockItemListBuilder
-func buildDateHelpersImportDecl(for models: some Collection<APIObject>) -> CodeBlockItemListSyntax {
-    if models.flatMap(\.members).contains(where: { $0.dateType != nil }) {
-        DeclSyntax("@_exported import struct Foundation.Date")
-        DeclSyntax("import TecoDateHelpers")
+func buildTecoCoreImportDecls(models: some Collection<APIObject> = [], pagination: Pagination? = nil, exported: Bool = false) -> CodeBlockItemListSyntax {
+    let requireDatehelpers = models.flatMap(\.members).contains(where: { $0.dateType != nil })
+    let requirePaginationHelpers = pagination != nil
+    return CodeBlockItemListSyntax {
+        if requireDatehelpers {
+            DeclSyntax("@_exported import struct Foundation.Date")
+        }
+        DeclSyntax("\(raw: exported ? "@_exported " : "")import TecoCore")
+        if requireDatehelpers {
+            DeclSyntax("import TecoDateHelpers")
+        }
+        if requirePaginationHelpers {
+            DeclSyntax("import TecoPaginationHelpers")
+        }
     }
 }
 
@@ -26,11 +35,11 @@ func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws ->
             public let config: TCServiceConfig
             """)
 
-        buildServiceInitializerDeclSyntax(with: model.metadata, hasError: hasError)
+        buildServiceInitializerDecl(with: model.metadata, hasError: hasError)
     }
 }
 
-func buildServiceInitializerDeclSyntax(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
+func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
     DeclSyntax("""
         /// Initialize the ``\(raw: serviceMetadata.shortName.upperFirst())`` client.
         ///
