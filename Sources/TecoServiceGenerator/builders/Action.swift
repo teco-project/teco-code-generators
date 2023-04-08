@@ -19,6 +19,10 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
     }
 }
 
+private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> ExprSyntax? {
+    metadata.status == .deprecated ? #"fatalError("\#(raw: action) is no longer available.")"# : nil
+}
+
 @TupleExprElementListBuilder
 private func buildInputParameterList(for members: [APIObject.Member]) -> TupleExprElementListSyntax {
     for member in members {
@@ -76,8 +80,8 @@ func buildActionDecl(for action: String, metadata: APIModel.Action, unpacking in
         \(buildActionAttributeList(for: metadata, discardableResult: discardable))
         public func \(raw: action.lowerFirst())\(buildActionSignatureExpr(for: metadata, unpacking: input, async: async))
         """) {
-            if metadata.status == .deprecated {
-                ExprSyntax(#"fatalError("\#(raw: action) is no longer available.")"#)
+            if let unavailableBody = buildUnavailableBody(for: action, metadata: metadata) {
+                unavailableBody
             } else if let input {
                 buildUnpackedExecuteExpr(for: action, metadata: metadata, input: input, async: async)
             } else {
@@ -86,40 +90,35 @@ func buildActionDecl(for action: String, metadata: APIModel.Action, unpacking in
         }
 }
 
-func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, returning: "(\(raw: output.totalCountType), [\(raw: output.itemType!)])")) {
-            \(buildPaginateExpr(for: action))
-        }
-        """)
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, returning: "(\(raw: output.totalCountType), [\(raw: output.itemType!)])"))
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action)
+    }
 }
 
-func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
-        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, hasCallback: true)) {
-            \(buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")]))
-        }
-        """)
+        public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, hasCallback: true))
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")])
+    }
 }
 
-func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) -> DeclSyntax {
-    DeclSyntax("""
+func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+    try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         ///
         /// - Returns: `AsyncSequence`s of `\(raw: output.itemType!)` and `\(raw: metadata.output)` that can be iterated over asynchronously on demand.
         \(buildActionAttributeList(for: metadata, discardableResult: false))
-        public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)> {
-            TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)
-        }
-        """)
-}
-
-extension SyntaxProtocol {
-    fileprivate func spaced() -> Self {
-        self.with(\.leadingTrivia, .space)
+        public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)>
+        """) {
+        buildUnavailableBody(for: action, metadata: metadata) ??
+            "TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)"
     }
 }

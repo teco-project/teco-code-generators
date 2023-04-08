@@ -133,11 +133,11 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                             try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput)
                             try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput, async: true)
 
-                            if metadata.status != .deprecated, pagination != nil {
-                                buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
-                                buildPaginatedActionWithCallbackDecl(for: action, metadata: metadata, output: output)
+                            if pagination != nil {
+                                try buildPaginatedActionDecl(for: action, metadata: metadata, output: output)
+                                try buildPaginatedActionWithCallbackDecl(for: action, metadata: metadata, output: output)
 
-                                buildActionPaginatorDecl(for: action, metadata: metadata, output: output)
+                                try buildActionPaginatorDecl(for: action, metadata: metadata, output: output)
                             }
                         }
                     }.withCopyrightHeader()
