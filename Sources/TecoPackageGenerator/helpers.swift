@@ -1,4 +1,6 @@
 import class Foundation.Process
+import SwiftSyntax
+import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
 typealias Target = (service: String, version: String)
@@ -38,4 +40,17 @@ func generateService(with generator: URL, manifest: URL, to directory: URL, erro
         )
     }
     return (directory.deletingLastPathComponent().lastPathComponent, directory.lastPathComponent)
+}
+
+func parseTupleExprElementSyntax(from source: String) throws -> TupleExprElementSyntax {
+    let separator = source.firstIndex(where: { !$0.isLetter && !$0.isNumber && $0 != "_" })
+    let (label, expression): (String?, String)
+    if let separator, source[separator] == ":" {
+        label = .init(source.prefix(upTo: separator))
+        expression = source.suffix(from: source.index(after: separator)).trimmingCharacters(in: .whitespaces)
+    } else {
+        (label, expression) = (nil, source)
+    }
+    let syntax = TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: expression)"))
+    return try TupleExprElementSyntax(validating: syntax)
 }

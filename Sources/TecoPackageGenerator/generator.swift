@@ -16,8 +16,8 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     @Option(name: .long, completion: .file(), transform: URL.init(fileURLWithPath:))
     var serviceGenerator: URL?
 
-    @Option(name: .long)
-    var tecoCoreRequirement: String = #".upToNextMinor(from: "0.5.0")"#
+    @Option(name: .long, transform: parseTupleExprElementSyntax)
+    var tecoCoreRequirement: TupleExprElementSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.0")"#))
 
     @Flag
     var dryRun: Bool = false
