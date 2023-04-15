@@ -37,12 +37,12 @@ private func buildActionParameterList(for action: APIModel.Action, unpacking inp
         } else {
             FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
         }
-        FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: ExprSyntax("nil")))
+        FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
         if let output {
             FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
         FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
-        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: ExprSyntax("nil")))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
     }
 }
 

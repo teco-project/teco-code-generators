@@ -17,7 +17,7 @@ func buildInitializerParameterList(for members: [APIObject.Member]) -> FunctionP
             }
         }
         if !member.required {
-            return ExprSyntax("nil")
+            return NilLiteralExprSyntax().as(ExprSyntax.self)
         }
         return nil
     }
