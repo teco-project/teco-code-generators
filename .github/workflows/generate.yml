@@ -145,6 +145,7 @@ jobs:
           ref: ${{ env.TECO_BRANCH }}
           path: ./teco-core
           token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
       - name: Drop bot commits in teco-core
         env:
           BOT_COMMITTER_EMAIL: ${{ steps.import-gpg.outputs.email }}
@@ -152,11 +153,11 @@ jobs:
         run: |
           git filter-repo --refs HEAD --commit-callback '
             import subprocess; import os
-            p = subprocess.run(["git", "merge-base", "--is-ancestor", commit.original_id, os.environ["GITHUB_BASE_REF"]])
+            p = subprocess.run(["git", "merge-base", "--is-ancestor", commit.original_id, "origin/" + os.environ["GITHUB_BASE_REF"]])
             if p.returncode != 0 and commit.committer_email.decode() == os.environ["BOT_COMMITTER_EMAIL"]:
               commit.skip()
           '
-          git rebase "$GITHUB_BASE_REF" --quiet
+          git rebase "origin/$GITHUB_BASE_REF" --quiet
       - name: Generate teco-core
         run: |
           swift run -c release --skip-build teco-common-error-generator \
@@ -173,6 +174,7 @@ jobs:
           ref: ${{ env.TECO_BRANCH }}
           path: ./teco
           token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
       - name: Drop bot commits in teco
         env:
           BOT_COMMITTER_EMAIL: ${{ steps.import-gpg.outputs.email }}
@@ -180,11 +182,11 @@ jobs:
         run: |
           git filter-repo --refs HEAD --commit-callback '
             import subprocess; import os
-            p = subprocess.run(["git", "merge-base", "--is-ancestor", commit.original_id, os.environ["GITHUB_BASE_REF"]])
+            p = subprocess.run(["git", "merge-base", "--is-ancestor", commit.original_id, "origin/" + os.environ["GITHUB_BASE_REF"]])
             if p.returncode != 0 and commit.committer_email.decode() == os.environ["BOT_COMMITTER_EMAIL"]:
               commit.skip()
           '
-          git rebase "$GITHUB_BASE_REF" --quiet
+          git rebase "origin/$GITHUB_BASE_REF" --quiet
       - name: Generate teco
         run: |
           swift run -c release --skip-build teco-package-generator \
