@@ -8,6 +8,8 @@ on:
       - 'Sources/**'
       - 'Package.*'
 
+concurrency: codegen-sync-${{ github.event.number }}
+
 env:
   TECO_BRANCH: codegen-pr-${{ github.event.number }}
 
