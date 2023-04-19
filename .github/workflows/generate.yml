@@ -3,6 +3,10 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - '.github/workflows/generate.yml'
+      - 'Sources/**'
+      - 'Package.*'
 
 env:
   TECO_BRANCH: codegen-pr-${{ github.event.number }}
@@ -10,7 +14,7 @@ env:
 jobs:
   create-branch:
     runs-on: ubuntu-latest
-    if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'in sync') }}
     strategy:
       matrix:
         repo:
@@ -23,7 +27,28 @@ jobs:
         with:
           app_id: ${{ secrets.BOT_APP_ID }}
           private_key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
-      - name: Create synced branch
+      - name: Check if PR author is collaborator
+        uses: actions/github-script@v6
+        id: check-collaborator
+        env:
+          TECO_REPO: ${{ matrix.repo }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            try {
+              await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: process.env.TECO_REPO,
+                username: context.payload.pull_request.user.login
+              });
+              return true;
+            } catch {
+              const title = 'Pull request author is not collaborator';
+              const message = 'The author does not have push access to the sync branch at the moment. If the generated codes need patching, please contact organization owners.';
+              console.log(`::warning title=${title}::${message}`);
+              return false;
+            }
+      - name: Create sync branch
         uses: actions/github-script@v6
         env:
           TECO_REPO: ${{ matrix.repo }}
@@ -67,9 +92,20 @@ jobs:
               allow_force_pushes: true,
               allow_deletions: true
             });
+      - name: Add "in sync" label
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['in sync']
+            });
   generate-and-sync:
     runs-on: ubuntu-latest
-    if: ${{ success() || github.event.action == 'synchronize' }}
+    if: ${{ success() || contains(github.event.pull_request.labels.*.name, 'in sync') }}
     needs:
       - create-branch
     steps:
