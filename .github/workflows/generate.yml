@@ -130,7 +130,24 @@ jobs:
         run: sudo apt-get install git-filter-repo -y
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Detect Swift package information
+        id: swift-package
+        run: |
+          echo "BUILD_PATH=$(swift build --show-bin-path -c release)" >> $GITHUB_ENV
+          echo 'product-paths<<$EOF' >> $GITHUB_OUTPUT
+          swift package describe --type json \
+            | jq '.products[].name' -r \
+            | sed "s#^#$(swift build --show-bin-path -c release)/#" \
+            >> $GITHUB_OUTPUT
+          echo '$EOF' >> $GITHUB_OUTPUT
+      - name: Apply cache
+        uses: actions/cache@v3
+        id: build-cache
+        with:
+          path: ${{ steps.swift-package.outputs.product-paths }}
+          key: ${{ runner.os }}-${{ hashFiles('Package.*', 'Sources/**') }}
       - name: Build
+        if: ${{ !steps.build-cache.outputs.cache-hit }}
         run: swift build -c release
       - name: Checkout API models
         uses: actions/checkout@v3
@@ -160,12 +177,12 @@ jobs:
           git rebase "origin/$GITHUB_BASE_REF" --quiet
       - name: Generate teco-core
         run: |
-          swift run -c release --skip-build teco-common-error-generator \
+          ${{ env.BUILD_PATH }}/teco-common-error-generator \
             --error-file ./models/zh-CN/error-codes.json \
             --output ./teco-core/Sources/TecoCore/Errors/TCCommonError.swift
-          swift run -c release --skip-build teco-date-wrapper-generator \
+          ${{ env.BUILD_PATH }}/teco-date-wrapper-generator \
             --output-dir './teco-core/Sources/TecoDateHelpers/Property Wrappers'
-          swift run -c release --skip-build teco-region-generator \
+          ${{ env.BUILD_PATH }}/teco-region-generator \
             --output ./teco-core/Sources/TecoCore/Common/TCRegion.swift
       - name: Checkout teco
         uses: actions/checkout@v3
@@ -189,9 +206,9 @@ jobs:
           git rebase "origin/$GITHUB_BASE_REF" --quiet
       - name: Generate teco
         run: |
-          swift run -c release --skip-build teco-package-generator \
+          ${{ env.BUILD_PATH }}/teco-package-generator \
             --model-dir ./models/zh-CN \
-            --service-generator .build/release/teco-service-generator \
+            --service-generator ${{ env.BUILD_PATH }}/teco-service-generator \
             --package-dir ./teco
           if ! git diff --exit-code Package.swift
           then
