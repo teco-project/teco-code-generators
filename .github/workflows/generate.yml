@@ -197,5 +197,23 @@ jobs:
           then
             swift package resolve
           fi
-      # TODO: Add and commit to TecoCore.
-      # TODO: Add and commit to Teco.
+      - name: Commit and push to teco-core
+        uses: EndBug/add-and-commit@v9
+        with:
+          cwd: ./teco-core
+          author_name: ${{ github.event.pull_request.user.name }}
+          author_email: ${{ github.event.pull_request.user.email }}
+          committer_name: ${{ steps.import-gpg.outputs.name }}
+          committer_email: ${{ steps.import-gpg.outputs.email }}
+          message: ${{ github.event.pull_request.title }}
+          push: true
+      - name: Commit and push to teco
+        uses: EndBug/add-and-commit@v9
+        with:
+          cwd: ./teco
+          author_name: ${{ github.event.pull_request.user.name }}
+          author_email: ${{ github.event.pull_request.user.email }}
+          committer_name: ${{ steps.import-gpg.outputs.name }}
+          committer_email: ${{ steps.import-gpg.outputs.email }}
+          message: ${{ github.event.pull_request.title }}
+          push: true
