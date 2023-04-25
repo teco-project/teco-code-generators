@@ -214,12 +214,22 @@ jobs:
           then
             swift package resolve
           fi
+      - name: Get pull request author information
+        uses: actions/github-script@v6
+        id: author-info
+        with:
+          script: |
+            const { data: user } = await github.rest.users.getByUsername({
+              username: context.payload.pull_request.user.login
+            });
+            core.setOutput('name', user.name);
+            core.setOutput('email', user.email);
       - name: Commit and push to teco-core
         uses: EndBug/add-and-commit@v9
         with:
           cwd: ./teco-core
-          author_name: ${{ github.event.pull_request.user.name }}
-          author_email: ${{ github.event.pull_request.user.email }}
+          author_name: ${{ steps.author-info.outputs.name }}
+          author_email: ${{ steps.author-info.outputs.email }}
           committer_name: ${{ steps.import-gpg.outputs.name }}
           committer_email: ${{ steps.import-gpg.outputs.email }}
           message: ${{ github.event.pull_request.title }}
@@ -228,8 +238,8 @@ jobs:
         uses: EndBug/add-and-commit@v9
         with:
           cwd: ./teco
-          author_name: ${{ github.event.pull_request.user.name }}
-          author_email: ${{ github.event.pull_request.user.email }}
+          author_name: ${{ steps.author-info.outputs.name }}
+          author_email: ${{ steps.author-info.outputs.email }}
           committer_name: ${{ steps.import-gpg.outputs.name }}
           committer_email: ${{ steps.import-gpg.outputs.email }}
           message: ${{ github.event.pull_request.title }}
