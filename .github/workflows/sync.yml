@@ -3,10 +3,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '.github/workflows/sync.yml'
-      - 'Sources/**'
-      - 'Package.*'
 
 concurrency: codegen-sync-${{ github.event.number }}
 
@@ -16,7 +12,7 @@ env:
 jobs:
   create-branch:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'in sync') }}
+    if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' }}
     strategy:
       matrix:
         repo:
