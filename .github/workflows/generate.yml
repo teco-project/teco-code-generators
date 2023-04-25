@@ -223,7 +223,7 @@ jobs:
           committer_name: ${{ steps.import-gpg.outputs.name }}
           committer_email: ${{ steps.import-gpg.outputs.email }}
           message: ${{ github.event.pull_request.title }}
-          push: true
+          push: --force
       - name: Commit and push to teco
         uses: EndBug/add-and-commit@v9
         with:
@@ -233,4 +233,4 @@ jobs:
           committer_name: ${{ steps.import-gpg.outputs.name }}
           committer_email: ${{ steps.import-gpg.outputs.email }}
           message: ${{ github.event.pull_request.title }}
-          push: true
+          push: --force
