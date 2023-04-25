@@ -1,10 +1,10 @@
-name: Generate
+name: Sync
 on:
   pull_request:
     branches:
       - main
     paths:
-      - '.github/workflows/generate.yml'
+      - '.github/workflows/sync.yml'
       - 'Sources/**'
       - 'Package.*'
 
@@ -116,7 +116,7 @@ jobs:
               repo: context.repo.repo,
               labels: ['in sync']
             });
-  generate-and-sync:
+  generate-and-commit:
     runs-on: ubuntu-latest
     if: ${{ success() || needs.create-branch.result == 'skipped' }}
     needs:
