@@ -62,6 +62,33 @@ extension TecoCodeGenerator {
     }
 }
 
+extension ArrayExprSyntax {
+    public static func multiline(
+        leadingTrivia: Trivia? = nil,
+        unexpectedBeforeLeftSquare: UnexpectedNodesSyntax? = nil,
+        leftSquare: TokenSyntax = .leftSquareBracketToken(),
+        unexpectedBetweenLeftSquareAndElements: UnexpectedNodesSyntax? = nil,
+        unexpectedBetweenElementsAndRightSquare: UnexpectedNodesSyntax? = nil,
+        rightSquare: TokenSyntax = .rightSquareBracketToken(),
+        unexpectedAfterRightSquare: UnexpectedNodesSyntax? = nil,
+        @ArrayElementListBuilder elementsBuilder: () throws -> ArrayElementListSyntax,
+        trailingTrivia: Trivia? = nil
+    ) rethrows -> ArrayExprSyntax {
+        let elements = try elementsBuilder().map({ $0.with(\.leadingTrivia, .newline + $0.leadingTrivia) })
+        return .init(
+            leadingTrivia: leadingTrivia,
+            unexpectedBeforeLeftSquare,
+            leftSquare: leftSquare,
+            unexpectedBetweenLeftSquareAndElements,
+            elements: .init(elements).with(\.trailingTrivia, .newline),
+            unexpectedBetweenElementsAndRightSquare,
+            rightSquare: rightSquare,
+            unexpectedAfterRightSquare,
+            trailingTrivia: trailingTrivia
+        )
+    }
+}
+
 extension SourceFileSyntax {
     public func withCopyrightHeader() -> SourceFileSyntax {
         let header = """

@@ -1,6 +1,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
+import TecoCodeGeneratorCommons
 
 func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool = false) -> ArrayElementSyntax {
     precondition(names.isEmpty == false)
@@ -10,11 +11,9 @@ func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool 
 
 func buildRegionListExpr(from maps: OrderedDictionary<String, String>...) -> ArrayExprSyntax {
     precondition(Set(maps.map(\.keys)).count == 1)
-    return ArrayExprSyntax {
-        for (index, region) in maps[0].keys.enumerated() {
+    return ArrayExprSyntax.multiline {
+        for region in maps[0].keys {
             buildRegionExpr(id: region, names: .init(maps.map { $0[region]! }), trailingComma: true)
-                .with(\.trailingTrivia, .newline)
-                .with(\.leadingTrivia, index == 0 ? .newline : [])
         }
     }
 }
