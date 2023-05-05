@@ -14,7 +14,7 @@ func buildRegionListExpr(from maps: OrderedDictionary<String, String>...) -> Arr
         for (index, region) in maps[0].keys.enumerated() {
             buildRegionExpr(id: region, names: .init(maps.map { $0[region]! }), trailingComma: true)
                 .with(\.trailingTrivia, .newline)
-                .with(\.leadingTrivia, index == 0 ? .newline : nil)
+                .with(\.leadingTrivia, index == 0 ? .newline : [])
         }
     }
 }

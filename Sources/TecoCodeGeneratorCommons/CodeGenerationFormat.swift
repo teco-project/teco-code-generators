@@ -29,18 +29,18 @@ import SwiftSyntax
 public class CodeGenerationFormat: BasicFormat {
 
     public override func visit(_ node: MemberDeclListItemSyntax) -> MemberDeclListItemSyntax {
-        if node.decl.is(EnumCaseDeclSyntax.self) == true || node.indexInParent == 0 {
+        if node.decl.is(EnumCaseDeclSyntax.self) {
             return super.visit(node)
         } else {
             let formatted = super.visit(node)
-            return formatted.with(\.leadingTrivia, .newline + (formatted.leadingTrivia ?? []))
+            return formatted.with(\.trailingTrivia, formatted.trailingTrivia + .newline)
         }
     }
 
     public override func visit(_ node: CodeBlockItemSyntax) -> CodeBlockItemSyntax {
         if node.parent?.parent?.is(SourceFileSyntax.self) == true, !node.item.is(ImportDeclSyntax.self) {
             let formatted = super.visit(node)
-            return formatted.with(\.leadingTrivia, .newline + (formatted.leadingTrivia ?? []))
+            return formatted.with(\.leadingTrivia, .newline + formatted.leadingTrivia)
         } else {
             return super.visit(node)
         }

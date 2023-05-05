@@ -14,7 +14,7 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
         }
         AttributeSyntax("@inlinable")
         if discardableResult {
-            AttributeSyntax("@discardableResult").spaced()
+            AttributeSyntax("@discardableResult")
         }
     }
 }
@@ -35,14 +35,14 @@ private func buildActionParameterList(for action: APIModel.Action, unpacking inp
         if let input {
             buildInitializerParameterList(for: input)
         } else {
-            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), colon: .colonToken(), type: TypeSyntax("\(raw: action.input)"))
+            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input"), type: TypeSyntax("\(raw: action.input)"))
         }
-        FunctionParameterSyntax(firstName: "region", colon: .colonToken(), type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "region", type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
         if let output {
-            FunctionParameterSyntax(firstName: "onResponse", colon: .colonToken(), type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
+            FunctionParameterSyntax(firstName: "onResponse", type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
-        FunctionParameterSyntax(firstName: "logger", colon: .colonToken(), type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
-        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), colon: .colonToken(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "logger", type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop"), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
     }
 }
 
@@ -51,7 +51,7 @@ private func buildActionSignatureExpr(for action: APIModel.Action, unpacking inp
     let output = output ?? "\(raw: action.output)"
     let returnType: TypeSyntax = hasCallback ? "Void" : output
     let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
-    let effects = async ? DeclEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async).spaced(), throwsSpecifier: .keyword(.throws).spaced()) : nil
+    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws)) : nil
     return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? returnType : "EventLoopFuture<\(returnType)>"))
 }
 

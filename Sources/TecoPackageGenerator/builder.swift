@@ -11,7 +11,7 @@ func buildProductListExpr(for targets: [(service: String, version: String)]) -> 
         for (index, target) in targets.enumerated() {
             buildProductExpr(name: "Teco\(target.service)\(target.version)", trailingComma: true)
                 .with(\.trailingTrivia, .newline)
-                .with(\.leadingTrivia, index == 0 ? .newline : nil)
+                .with(\.leadingTrivia, index == 0 ? .newline : [])
         }
     }
 }
@@ -32,7 +32,7 @@ func buildTargetListExpr(for targets: [(service: String, version: String)]) -> A
                 trailingComma: true
             )
             .with(\.trailingTrivia, .newline)
-            .with(\.leadingTrivia, index == 0 ? .newline : nil)
+            .with(\.leadingTrivia, index == 0 ? .newline : [])
         }
     }
 }

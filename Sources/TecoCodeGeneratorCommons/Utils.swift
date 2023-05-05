@@ -1,6 +1,8 @@
 import Foundation
 import ArgumentParser
+import SwiftParser
 @_spi(RawSyntax) import SwiftSyntax
+import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
 extension String {
@@ -24,7 +26,10 @@ extension String {
 
     public var isSwiftKeyword: Bool {
         var string = self
-        return string.withSyntaxText(Keyword.init)?.isLexerClassified ?? false
+        if let keyword = string.withSyntaxText(Keyword.init) {
+            return TokenKind.keyword(keyword).isLexerClassifiedKeyword
+        }
+        return false
     }
 
     public func swiftIdentifierEscaped() -> String {
@@ -78,7 +83,7 @@ extension SourceFileSyntax {
             
             
             """
-        return self.with(\.leadingTrivia, .lineComment(header) + (self.leadingTrivia ?? []))
+        return self.with(\.leadingTrivia, .lineComment(header) + self.leadingTrivia)
     }
 
     public func save(to url: URL) throws {
