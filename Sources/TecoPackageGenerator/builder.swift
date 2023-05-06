@@ -8,7 +8,7 @@ func buildProductExpr(name: String, trailingComma: Bool = false) -> ArrayElement
 }
 
 func buildProductListExpr(for targets: [(service: String, version: String)]) -> ArrayExprSyntax {
-    ArrayExprSyntax.multiline {
+    ArrayExprSyntax {
         for target in targets {
             buildProductExpr(name: "Teco\(target.service)\(target.version)", trailingComma: true)
         }
@@ -23,7 +23,7 @@ func buildTargetExpr(name: String, path: String, trailingComma: Bool = false) ->
 }
 
 func buildTargetListExpr(for targets: [(service: String, version: String)]) -> ArrayExprSyntax {
-    ArrayExprSyntax.multiline {
+    ArrayExprSyntax {
         for target in targets {
             buildTargetExpr(
                 name: "Teco\(target.service)\(target.version)",

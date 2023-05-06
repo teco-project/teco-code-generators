@@ -11,7 +11,7 @@ func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool 
 
 func buildRegionListExpr(from maps: OrderedDictionary<String, String>...) -> ArrayExprSyntax {
     precondition(Set(maps.map(\.keys)).count == 1)
-    return ArrayExprSyntax.multiline {
+    return ArrayExprSyntax {
         for region in maps[0].keys {
             buildRegionExpr(id: region, names: .init(maps.map { $0[region]! }), trailingComma: true)
         }
