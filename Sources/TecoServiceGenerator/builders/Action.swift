@@ -35,14 +35,14 @@ private func buildActionParameterList(for action: APIModel.Action, unpacking inp
         if let input {
             buildInitializerParameterList(for: input)
         } else {
-            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input"), type: TypeSyntax("\(raw: action.input)"))
+            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), type: TypeSyntax("\(raw: action.input)"))
         }
         FunctionParameterSyntax(firstName: "region", type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
         if let output {
             FunctionParameterSyntax(firstName: "onResponse", type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
         FunctionParameterSyntax(firstName: "logger", type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
-        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop"), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
     }
 }
 
@@ -51,7 +51,7 @@ private func buildActionSignatureExpr(for action: APIModel.Action, unpacking inp
     let output = output ?? "\(raw: action.output)"
     let returnType: TypeSyntax = hasCallback ? "Void" : output
     let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
-    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws)) : nil
+    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws).spaced()) : nil
     return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? returnType : "EventLoopFuture<\(returnType)>"))
 }
 

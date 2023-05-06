@@ -93,6 +93,8 @@ extension SourceFileSyntax {
         // Validate the generated code.
         guard SourceFileSyntax(source)?.hasError == false else {
             print("Syntax tree validation error!")
+            print("==== Generated source (\(url.path)) ====")
+            print(source)
             throw ExitCode(100)
         }
 
