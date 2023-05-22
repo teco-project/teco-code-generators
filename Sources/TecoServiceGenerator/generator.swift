@@ -194,3 +194,13 @@ struct TecoServiceGenerator: TecoCodeGenerator {
         }
     }
 }
+
+extension TecoServiceGenerator {
+    var startingYear: Int {
+        if let version {
+            precondition(version.signum() > 0 && "\(version)".count == 8, "Invalid manifest version")
+            return version / 10000
+        }
+        return Self.startingYear
+    }
+}
