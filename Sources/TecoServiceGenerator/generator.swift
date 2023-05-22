@@ -11,7 +11,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var source: URL
-    
+
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
     var errorFile: URL?
 
@@ -20,6 +20,9 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
     @Flag
     var dryRun: Bool = false
+
+    @Option(name: .long)
+    var version: Int?
 
     func generate() throws {
         // Check for Regex support
@@ -189,5 +192,15 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 }
             }
         }
+    }
+}
+
+extension TecoServiceGenerator {
+    var startingYear: Int {
+        if let version {
+            precondition(version.signum() > 0 && "\(version)".count == 8, "Invalid manifest version")
+            return version / 10000
+        }
+        return Self.startingYear
     }
 }
