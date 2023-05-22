@@ -15,10 +15,14 @@ func generateService(with generator: URL, manifest: URL, to directory: URL, erro
     let process = Process()
     process.executableURL = generator
 
+    let version = manifest.deletingLastPathComponent().lastPathComponent.dropFirst()
+    precondition(version.count == 8, "Invalid manifest version \(manifest.deletingLastPathComponent().lastPathComponent)")
+
     let arguments = {
         var arguments = [
             "--source=\(manifest.path)",
             "--output-dir=\(directory.path)",
+            "--version=\(version)",
         ]
         if let errorFile {
             arguments.append("--error-file=\(errorFile.path)")
