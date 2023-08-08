@@ -35,15 +35,16 @@ private func buildActionParameterList(for action: APIModel.Action, unpacking inp
         if let input {
             buildInitializerParameterList(for: input)
         } else {
-            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), type: TypeSyntax("\(raw: action.input)"))
+            FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input"), type: TypeSyntax("\(raw: action.input)"))
         }
         FunctionParameterSyntax(firstName: "region", type: TypeSyntax("TCRegion?"), defaultValue: .init(value: NilLiteralExprSyntax()))
         if let output {
             FunctionParameterSyntax(firstName: "onResponse", type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
         FunctionParameterSyntax(firstName: "logger", type: TypeSyntax("Logger"), defaultValue: .init(value: ExprSyntax("TCClient.loggingDisabled")))
-        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), type: TypeSyntax("EventLoop?"), defaultValue: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop"), type: TypeSyntax("EventLoop?"), defaultValue: .init(value: NilLiteralExprSyntax()))
     }
+    .formatted().as(FunctionParameterClauseSyntax.self)!
 }
 
 private func buildActionSignatureExpr(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, returning output: TypeSyntax? = nil, async: Bool = false, hasCallback: Bool = false) -> FunctionSignatureSyntax {
@@ -51,8 +52,9 @@ private func buildActionSignatureExpr(for action: APIModel.Action, unpacking inp
     let output = output ?? "\(raw: action.output)"
     let returnType: TypeSyntax = hasCallback ? "Void" : output
     let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
-    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws).spaced()) : nil
+    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws)) : nil
     return FunctionSignatureSyntax(parameterClause: parameters, effectSpecifiers: effects, returnClause: .init(type: async ? returnType : "EventLoopFuture<\(returnType)>"))
+        .formatted().as(FunctionSignatureSyntax.self)!
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
