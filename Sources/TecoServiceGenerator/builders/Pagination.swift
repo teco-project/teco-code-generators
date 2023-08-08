@@ -49,7 +49,7 @@ private func buildNextInputExpr(for type: String, members: [APIObject.Member], k
     }
     return FunctionCallExprSyntax(callee: ExprSyntax("\(raw: type)")) {
         for (label, value) in parameters {
-            TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: value)"))
+            LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: value)"))
         }
     }.as(ExprSyntax.self)!
 }

@@ -29,8 +29,8 @@ import SwiftSyntax
 public class CodeGenerationFormat: BasicFormat {
     // MARK: - Additional newline between members
 
-    public override func visit(_ node: MemberDeclListItemSyntax) -> MemberDeclListItemSyntax {
-        if node != node.parent?.children(viewMode: .sourceAccurate).first?.as(MemberDeclListItemSyntax.self),
+    public override func visit(_ node: MemberBlockItemSyntax) -> MemberBlockItemSyntax {
+        if node != node.parent?.children(viewMode: .sourceAccurate).first?.as(MemberBlockItemSyntax.self),
            !node.decl.is(EnumCaseDeclSyntax.self) {
             return super.visit(node).ensuringTwoLeadingNewlines()
         } else {
@@ -74,7 +74,7 @@ public class CodeGenerationFormat: BasicFormat {
 
     private func formatChildrenSeparatedByNewline<SyntaxType: SyntaxProtocol>(children: SyntaxChildren) -> [SyntaxType] {
         var formattedChildren = children.map {
-            self.visit($0).as(SyntaxType.self)!
+            self.rewrite($0).as(SyntaxType.self)!
         }
         formattedChildren = formattedChildren.map {
             if $0.leadingTrivia.first?.isNewline == true {

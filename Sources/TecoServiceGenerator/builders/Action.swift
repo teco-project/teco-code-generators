@@ -23,26 +23,26 @@ private func buildUnavailableBody(for action: String, metadata: APIModel.Action)
     metadata.status == .deprecated ? #"fatalError("\#(raw: action) is no longer available.")"# : nil
 }
 
-@TupleExprElementListBuilder
-private func buildInputParameterList(for members: [APIObject.Member]) -> TupleExprElementListSyntax {
+@LabeledExprListBuilder
+private func buildInputParameterList(for members: [APIObject.Member]) -> LabeledExprListSyntax {
     for member in members {
-        TupleExprElementSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
+        LabeledExprSyntax(label: member.identifier, expression: ExprSyntax("\(raw: member.escapedIdentifier)"))
     }
 }
 
-private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callbackWith output: TypeSyntax? = nil) -> ParameterClauseSyntax {
-    ParameterClauseSyntax {
+private func buildActionParameterList(for action: APIModel.Action, unpacking input: [APIObject.Member]? = nil, callbackWith output: TypeSyntax? = nil) -> FunctionParameterClauseSyntax {
+    FunctionParameterClauseSyntax {
         if let input {
             buildInitializerParameterList(for: input)
         } else {
             FunctionParameterSyntax(firstName: "_", secondName: TokenSyntax("input").spaced(), type: TypeSyntax("\(raw: action.input)"))
         }
-        FunctionParameterSyntax(firstName: "region", type: TypeSyntax("TCRegion?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "region", type: TypeSyntax("TCRegion?"), defaultValue: .init(value: NilLiteralExprSyntax()))
         if let output {
             FunctionParameterSyntax(firstName: "onResponse", type: TypeSyntax("@escaping (\(output), EventLoop) -> EventLoopFuture<Bool>"))
         }
-        FunctionParameterSyntax(firstName: "logger", type: TypeSyntax("Logger"), defaultArgument: .init(value: ExprSyntax("TCClient.loggingDisabled")))
-        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), type: TypeSyntax("EventLoop?"), defaultArgument: .init(value: NilLiteralExprSyntax()))
+        FunctionParameterSyntax(firstName: "logger", type: TypeSyntax("Logger"), defaultValue: .init(value: ExprSyntax("TCClient.loggingDisabled")))
+        FunctionParameterSyntax(firstName: "on", secondName: TokenSyntax("eventLoop").spaced(), type: TypeSyntax("EventLoop?"), defaultValue: .init(value: NilLiteralExprSyntax()))
     }
 }
 
@@ -52,7 +52,7 @@ private func buildActionSignatureExpr(for action: APIModel.Action, unpacking inp
     let returnType: TypeSyntax = hasCallback ? "Void" : output
     let parameters = buildActionParameterList(for: action, unpacking: input, callbackWith: hasCallback ? output : nil)
     let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws).spaced()) : nil
-    return FunctionSignatureSyntax(input: parameters, effectSpecifiers: effects, output: .init(returnType: async ? returnType : "EventLoopFuture<\(returnType)>"))
+    return FunctionSignatureSyntax(parameterClause: parameters, effectSpecifiers: effects, returnClause: .init(type: async ? returnType : "EventLoopFuture<\(returnType)>"))
 }
 
 private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
@@ -66,9 +66,9 @@ private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Act
 }
 
 private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
-    let extraArgs = TupleExprElementListSyntax {
+    let extraArgs = LabeledExprListSyntax {
         for (label, value) in extraArguments {
-            TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: value)")).with(\.trailingComma, .commaToken())
+            LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: value)")).with(\.trailingComma, .commaToken())
         }
     }
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")

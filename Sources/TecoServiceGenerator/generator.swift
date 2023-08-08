@@ -75,7 +75,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
             do {
                 let sourceFile = SourceFileSyntax {
                     let imports = buildTecoCoreImportDecls(for: .exports(ServiceContext.objects.values))
-                    IfConfigDeclSyntax(clauses: [.init(poundKeyword: .poundIfKeyword(), condition: ExprSyntax("!BUILDING_DOCC"), elements: .statements(imports))])
+                    IfConfigDeclSyntax(clauses: [.init(poundKeyword: .poundIfToken(), condition: ExprSyntax("!BUILDING_DOCC"), elements: .statements(imports))])
                 }.withCopyrightHeader()
 
                 try sourceFile.save(to: outputDir.appendingPathComponent("exports.swift"))
