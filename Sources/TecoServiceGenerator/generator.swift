@@ -135,7 +135,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                         try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                             try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
-                            try buildResponseModelDecl(for: metadata.output, metadata: output, paginated: pagination != nil)
+                            try buildResponseModelDecl(for: metadata.output, metadata: output, wrapped: false, paginated: pagination != nil)
 
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)

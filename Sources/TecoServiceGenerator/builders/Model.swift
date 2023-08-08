@@ -58,21 +58,49 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject, paginated: Bool) throws -> StructDeclSyntax {
+@MemberBlockItemListBuilder
+func buildResponseModelMemberList(for output: APIObject, documentation: Bool = true, wrapped: Bool = false) -> MemberBlockItemListSyntax {
+    for member in output.members {
+        let getter = AccessorBlockSyntax(accessors: .getter("self.data.\(raw: member.identifier)"))
+        let binding = PatternBindingSyntax(pattern: PatternSyntax("\(raw: member.escapedIdentifier)"), typeAnnotation: .init(type: TypeSyntax("\(raw: getSwiftType(for: member))")), accessorBlock: wrapped ? getter : nil)
+        DeclSyntax("""
+            \(raw: documentation ? buildDocumentation(summary: member.document) : "")
+            \(raw: publicLetWithWrapper(for: member, computed: wrapped)) \(binding)
+            """)
+    }
+}
+
+func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bool, paginated: Bool) throws -> StructDeclSyntax {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
         public struct \(raw: output): \(raw: paginated ? "TCPaginatedResponse" : "TCResponseModel")
         """) {
-        let outputMembers = metadata.members
 
-        for member in outputMembers {
+        if wrapped {
+            DeclSyntax("private let data: Wrapped")
+
+            try StructDeclSyntax("private struct Wrapped: Codable") {
+                buildResponseModelMemberList(for: metadata, documentation: false)
+                try buildModelCodingKeys(for: metadata.members)
+            }
+
+            buildResponseModelMemberList(for: metadata, wrapped: true)
+
             DeclSyntax("""
-                \(raw: buildDocumentation(summary: member.document))
-                \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
+                /// 唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。
+                public let requestId: String
                 """)
-        }
 
-        try buildModelCodingKeys(for: metadata.members)
+            DeclSyntax("""
+                enum CodingKeys: String, CodingKey {
+                    case data = "Data"
+                    case requestId = "RequestId"
+                }
+                """)
+        } else {
+            buildResponseModelMemberList(for: metadata)
+            try buildModelCodingKeys(for: metadata.members)
+        }
 
         if paginated, let items = getItemsField(for: metadata) {
             buildGetItemsDecl(with: items)
