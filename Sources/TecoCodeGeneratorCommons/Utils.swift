@@ -1,6 +1,6 @@
 import Foundation
 import ArgumentParser
-import SwiftParser
+@_spi(Diagnostics) import SwiftParser
 @_spi(RawSyntax) import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
