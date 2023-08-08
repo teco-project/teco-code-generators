@@ -116,7 +116,9 @@ struct TecoServiceGenerator: TecoCodeGenerator {
 
                 for (action, metadata) in service.actions {
                     guard let input = ServiceContext.objects[metadata.input], input.type == .object,
-                          let output = ServiceContext.objects[metadata.output], output.type == .object else {
+                          let output = ServiceContext.objects[metadata.output],
+                          output.usage == .out || output.type == .object && output.members.contains(where: { $0.name == "RequestId" })
+                    else {
                         fatalError("broken API metadata")
                     }
 
@@ -131,11 +133,11 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         buildTecoCoreImportDecls(for: .action(input: input, output: output, pagination: pagination != nil))
 
                         let inputMembers = input.members.filter({ $0.type != .binary })
-                        let discardableOutput = output.members.count == 1
+                        let discardableOutput = output.type == .object && output.members.count == 1
 
                         try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                             try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
-                            try buildResponseModelDecl(for: metadata.output, metadata: output, wrapped: false, paginated: pagination != nil)
+                            try buildResponseModelDecl(for: metadata.output, metadata: output, wrapped: output.usage != nil, paginated: pagination != nil)
 
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)
