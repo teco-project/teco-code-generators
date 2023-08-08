@@ -57,11 +57,10 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                 let requestResponseModelNames = Set(service.actions.map(\.value).flatMap { [$0.input, $0.output] })
                 for modelName in requestResponseModelNames {
                     precondition(ServiceContext.objects[modelName] != nil)
-                    precondition(ServiceContext.objects[modelName]?.usage == nil)
                     models.removeValue(forKey: modelName)
                 }
 
-                // Validate model fragments.
+                // Validate model components.
                 for model in models.values {
                     precondition(model.usage != nil)
                 }
