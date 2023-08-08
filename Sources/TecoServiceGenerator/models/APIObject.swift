@@ -1,14 +1,15 @@
 struct APIObject: Codable {
-    let document: String
+    private let _document: String
     let members: [Member]
     private let _type: `Type`?
     var usage: Usage?
 
+    var document: String { self._document == "无" ? "" : self._document }
     var type: `Type` { self._type ?? .object }
     var initializable: Bool { self.usage == .in || self.usage == .both }
 
     enum CodingKeys: String, CodingKey {
-        case document
+        case _document = "document"
         case members
         case _type = "type"
         case usage
@@ -25,11 +26,12 @@ struct APIObject: Codable {
         let name: String
         private let _required: Bool?
         private let _nullable: Bool?
-        let document: String
+        private let _document: String
         let example: String?
         let member: String
         let type: APIObject.`Type`
 
+        var document: String { self._document == "无" ? "" : self._document }
         var required: Bool { self._required ?? true }
         var nullable: Bool { self._nullable ?? false }
         var optional: Bool { !self.required || self.nullable }
@@ -51,7 +53,7 @@ struct APIObject: Codable {
             case name
             case _required = "required"
             case _nullable = "value_allowed_null"
-            case document
+            case _document = "document"
             case example
             case member
             case type
