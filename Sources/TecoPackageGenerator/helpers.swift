@@ -46,7 +46,7 @@ func generateService(with generator: URL, manifest: URL, to directory: URL, erro
     return (directory.deletingLastPathComponent().lastPathComponent, directory.lastPathComponent)
 }
 
-func parseTupleExprElementSyntax(from source: String) throws -> TupleExprElementSyntax {
+func parseLabeledExprSyntax(from source: String) throws -> LabeledExprSyntax {
     let separator = source.firstIndex(where: { !$0.isLetter && !$0.isNumber && $0 != "_" })
     let (label, expression): (String?, String)
     if let separator, source[separator] == ":" {
@@ -55,6 +55,6 @@ func parseTupleExprElementSyntax(from source: String) throws -> TupleExprElement
     } else {
         (label, expression) = (nil, source)
     }
-    let syntax = TupleExprElementSyntax(label: label, expression: ExprSyntax("\(raw: expression)"))
-    return try TupleExprElementSyntax(validating: syntax)
+    let syntax = LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: expression)"))
+    return try LabeledExprSyntax(validating: syntax)
 }

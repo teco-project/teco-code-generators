@@ -113,8 +113,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "27cd6190ce0628847a3f8050794d6e627ad79c08",
-        "version" : "509.0.0-swift-DEVELOPMENT-SNAPSHOT-2023-05-02-a"
+        "revision" : "e42bece52df2496d60b1b2a762fee9ffde7fc205",
+        "version" : "509.0.0-swift-DEVELOPMENT-SNAPSHOT-2023-08-07-a"
       }
     },
     {
@@ -122,8 +122,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/teco-project/teco-core.git",
       "state" : {
-        "revision" : "5e4fb1db7a9f1260563f6c6112393b203bd03df5",
-        "version" : "0.5.0"
+        "revision" : "726210465e1f4cd6ed3d17e13050b73c47e0c993",
+        "version" : "0.5.1"
       }
     }
   ],

@@ -28,7 +28,7 @@ func buildInitializerParameterList(for members: [APIObject.Member]) -> FunctionP
                 firstName: "\(raw: member.identifier)",
                 colon: .colonToken(),
                 type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
-                defaultArgument: getDefaultArgument(for: member).map { .init(value: $0) }
+                defaultValue: getDefaultArgument(for: member).map { .init(value: $0) }
             )
         }
     }
@@ -120,8 +120,8 @@ func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) throws ->
     }
 }
 
-@MemberDeclListBuilder
-func buildModelCodingKeys(for members: [APIObject.Member]) throws -> MemberDeclListSyntax {
+@MemberBlockItemListBuilder
+func buildModelCodingKeys(for members: [APIObject.Member]) throws -> MemberBlockItemListSyntax {
     if !members.isEmpty {
         try EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
             for member in members {
