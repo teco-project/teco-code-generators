@@ -51,21 +51,27 @@ func getSwiftMemberType(for model: APIObject.Member) -> String {
     return type
 }
 
-func publicLetWithWrapper(for member: APIObject.Member, computed: Bool = false) -> String {
+func publicLetWithWrapper(for member: APIObject.Member, documentation: String = "", computed: Bool = false) -> String {
     guard member.type != .binary else {
         fatalError("Multipart APIs shouldn't be generated!")
+    }
+    var documentation = documentation
+    if documentation.last?.isNewline == false {
+        documentation += "\n"
     }
 
     if let dateType = member.dateType {
         precondition(computed == false, "Computed date properties are not supported yet.")
+        if !documentation.isEmpty {
+            documentation += "///\n"
+        }
         return """
-            ///
-            /// While the wrapped date value is immutable just like other fields, you can customize the projected
+            \(documentation)/// While the wrapped date value is immutable just like other fields, you can customize the projected
             /// string value (through `$`-prefix) in case the synthesized encoding is incorrect.
             @\(dateType.propertyWrapper) public var
             """
     } else {
-        return "public \(computed ? "var" : "let")"
+        return "\(documentation)public \(computed ? "var" : "let")"
     }
 }
 
