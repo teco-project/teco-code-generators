@@ -22,9 +22,11 @@ struct APIObject: Codable {
     }
 
     struct Member: Codable {
+        private let _disabled: Bool?
         private let _default: String?
         let name: String
         private let _required: Bool?
+        private let _output_required: Bool?
         private let _nullable: Bool?
         private let _document: String
         let example: String?
@@ -32,9 +34,11 @@ struct APIObject: Codable {
         let type: APIObject.`Type`
 
         var document: String { self._document == "无" ? "" : self._document }
+        var disabled: Bool { self._disabled ?? false }
         var required: Bool { self._required ?? true }
+        var outputRequired: Bool { self._output_required ?? true }
         var nullable: Bool { self._nullable ?? false }
-        var optional: Bool { !self.required || self.nullable }
+        var optional: Bool { !self.required || !self.outputRequired || self.nullable }
 
         var `default`: String? {
             switch self._default {
@@ -49,9 +53,11 @@ struct APIObject: Codable {
         }
 
         enum CodingKeys: String, CodingKey {
+            case _disabled = "disabled"
             case _default = "default"
             case name
             case _required = "required"
+            case _output_required = "output_required"
             case _nullable = "value_allowed_null"
             case _document = "document"
             case example

@@ -9,7 +9,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forc
     }
 
     if model.optional || forceOptional {
-        if !forceOptional, isInitializer, model.required {
+        if !forceOptional, isInitializer, model.required && model.outputRequired {
             // We regard required nullable fields as **required** for input and **nullable** in output,
             // so use non-optional for initializer.
             return type
