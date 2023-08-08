@@ -42,10 +42,7 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
         let inputMembers = metadata.members.filter({ $0.type != .binary })
 
         for member in inputMembers {
-            DeclSyntax("""
-                \(raw: buildDocumentation(summary: member.document))
-                \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                """)
+            DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: buildDocumentation(summary: member.document))) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))")
         }
 
         try buildModelInitializerDeclSyntax(with: inputMembers)
@@ -63,10 +60,7 @@ func buildResponseModelMemberList(for output: APIObject, documentation: Bool = t
     for member in output.members {
         let getter = AccessorBlockSyntax(accessors: .getter("self.data.\(raw: member.identifier)"))
         let binding = PatternBindingSyntax(pattern: PatternSyntax("\(raw: member.escapedIdentifier)"), typeAnnotation: .init(type: TypeSyntax("\(raw: getSwiftType(for: member))")), accessorBlock: wrapped ? getter : nil)
-        DeclSyntax("""
-            \(raw: documentation ? buildDocumentation(summary: member.document) : "")
-            \(raw: publicLetWithWrapper(for: member, computed: wrapped)) \(binding)
-            """)
+        DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: documentation ? buildDocumentation(summary: member.document) : "", computed: wrapped)) \(binding)")
     }
 }
 
@@ -120,10 +114,7 @@ func buildGeneralModelDecl(for model: String, metadata: APIObject) throws -> Str
         let members = metadata.members
 
         for member in members {
-            DeclSyntax("""
-                \(raw: buildDocumentation(summary: member.document))
-                \(raw: publicLetWithWrapper(for: member)) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))
-                """)
+            DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: buildDocumentation(summary: member.document))) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))")
         }
 
         if metadata.initializable {
