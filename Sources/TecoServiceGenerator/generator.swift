@@ -142,8 +142,8 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
                             try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)
 
-                            try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput)
-                            try buildActionDecl(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput, async: true)
+                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput)
+                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput, async: true)
 
                             if pagination != nil {
                                 try buildPaginatedActionDecl(for: action, metadata: metadata, output: output)

@@ -1,3 +1,4 @@
+import class Foundation.Pipe
 import class Foundation.Process
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -34,8 +35,22 @@ func generateService(with generator: URL, manifest: URL, to directory: URL, erro
     }()
     process.arguments = arguments
 
+    let outputPipe = Pipe()
+    process.standardOutput = outputPipe
+    process.standardError = outputPipe
+
     try process.run()
     process.waitUntilExit()
+
+    let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
+    if let outputString = String(data: output, encoding: .utf8), !outputString.isEmpty {
+        print("""
+            ======= BEGIN \(manifest.path) =======
+            \(outputString.trimmingCharacters(in: .whitespacesAndNewlines))
+            ======= END \(manifest.path) =======
+            
+            """)
+    }
 
     guard process.terminationStatus == 0 else {
         throw ProcessError(

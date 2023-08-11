@@ -6,7 +6,7 @@ func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
     DeclSyntax("""
         /// Extract the returned item list from the paginated response.
         public func getItems() -> [\(raw: getSwiftMemberType(for: field.metadata))] {
-            self.\(raw: field.key)\(raw: field.metadata.nullable || field.key.contains("?") ? " ?? []" : "")
+            self.\(raw: field.key)\(raw: field.metadata.optional || field.key.contains("?") ? " ?? []" : "")
         }
         """)
 }
@@ -33,6 +33,7 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
 }
 
 private func buildNextInputExpr(for type: String, members: [APIObject.Member], kind: Pagination) -> ExprSyntax {
+    let members = members.filter({ !$0.disabled })
     var parameters = OrderedDictionary(members.map({ ($0.identifier, "self.\($0.identifier)") }), uniquingKeysWith: { $1 })
     switch kind {
     case .token(let input, let output):

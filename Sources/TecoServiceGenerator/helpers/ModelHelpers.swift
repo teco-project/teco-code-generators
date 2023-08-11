@@ -9,7 +9,7 @@ func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forc
     }
 
     if model.optional || forceOptional {
-        if !forceOptional, isInitializer, model.required {
+        if !forceOptional, isInitializer, model.required && model.outputRequired {
             // We regard required nullable fields as **required** for input and **nullable** in output,
             // so use non-optional for initializer.
             return type
@@ -51,7 +51,7 @@ func getSwiftMemberType(for model: APIObject.Member) -> String {
     return type
 }
 
-func publicLetWithWrapper(for member: APIObject.Member, documentation: String = "", computed: Bool = false) -> String {
+func publicLetWithWrapper(for member: APIObject.Member, documentation: String = "", computed: Bool = false, deprecated: Bool = false) -> String {
     guard member.type != .binary else {
         fatalError("Multipart APIs shouldn't be generated!")
     }
@@ -59,6 +59,7 @@ func publicLetWithWrapper(for member: APIObject.Member, documentation: String = 
     if documentation.last?.isNewline == false {
         documentation += "\n"
     }
+    let availablility = deprecated ? "@available(*, deprecated)\n" : ""
 
     if let dateType = member.dateType {
         precondition(computed == false, "Computed date properties are not supported yet.")
@@ -68,12 +69,34 @@ func publicLetWithWrapper(for member: APIObject.Member, documentation: String = 
         return """
             \(documentation)/// While the wrapped date value is immutable just like other fields, you can customize the projected
             /// string value (through `$`-prefix) in case the synthesized encoding is incorrect.
-            @\(dateType.propertyWrapper) public var
+            \(availablility)@\(dateType.propertyWrapper) public var
             """
     } else {
-        return "\(documentation)public \(computed ? "var" : "let")"
+        return "\(documentation)\(availablility)public \(computed ? "var" : "let")"
     }
 }
+
+func deprecationMessage(for members: [String], in object: String? = nil) -> String? {
+    let deprecated = {
+        if let object {
+            return "deprecated in '\(object)'"
+        } else {
+            return "deprecated"
+        }
+    }()
+
+    guard members.count > 1 else {
+        if members.count == 1 {
+            return "'\(members[0])' is \(deprecated). Setting this parameter has no effect."
+        }
+        return nil
+    }
+
+    var list = members.map({ "'\($0)'" })
+    let last = list.removeLast()
+    return "\(list.joined(separator: ", ")) and \(last) are \(deprecated). Setting these parameters has no effect."
+}
+
 
 extension APIObject {
     var protocols: [String] {

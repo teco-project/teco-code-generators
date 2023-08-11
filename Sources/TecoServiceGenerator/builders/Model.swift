@@ -2,35 +2,53 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildInitializerParameterList(for members: [APIObject.Member]) -> FunctionParameterListSyntax {
-    func getDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
-        let type = getSwiftType(for: member, isInitializer: true)
-        if let defaultValue = member.default, member.required {
-            if type == "String" {
-                return ExprSyntax(literal: defaultValue)
-            } else if type == "Bool" {
-                return ExprSyntax("\(raw: defaultValue.lowercased())")
-            } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
-                return ExprSyntax("\(raw: defaultValue)")
-            } else if type == "Date" {
-                fatalError("Default value support for Date not implemented yet!")
-            }
-        }
-        if !member.required {
-            return NilLiteralExprSyntax().as(ExprSyntax.self)
-        }
+func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in model: String? = nil, functionNameBuilder: @escaping (String) -> String) -> AttributeSyntax? {
+    guard case let deprecated = members.filter(\.disabled),
+          let message = deprecationMessage(for: deprecated.map(\.identifier), in: model) else {
         return nil
     }
+    let renamed = functionNameBuilder(members.filter({ !$0.disabled }).map({ "\($0.identifier):" }).joined())
+    let arguments = AvailabilityArgumentListSyntax {
+        AvailabilityArgumentSyntax(argument: .token(.binaryOperator("*")))
+        AvailabilityArgumentSyntax(argument: .token(.keyword(.deprecated)))
+        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.renamed), value: .string(.init(content: renamed)))))
+        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.message), value: .string(.init(content: message)))))
+    }
+    return AttributeSyntax(
+        attributeName: TypeSyntax("available"),
+        leftParen: .leftParenToken(),
+        arguments: .availability(arguments),
+        rightParen: .rightParenToken()
+    )
+}
 
-    return FunctionParameterListSyntax {
-        for member in members {
-            FunctionParameterSyntax(
-                firstName: "\(raw: member.identifier)",
-                colon: .colonToken(),
-                type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
-                defaultValue: getDefaultArgument(for: member).map { .init(value: $0) }
-            )
+func buildDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
+    let type = getSwiftType(for: member, isInitializer: true)
+    if let defaultValue = member.default, member.required {
+        if type == "String" {
+            return ExprSyntax(literal: defaultValue)
+        } else if type == "Bool" {
+            return ExprSyntax("\(raw: defaultValue.lowercased())")
+        } else if type == "Float" || type == "Double" || type.hasPrefix("Int") || type.hasPrefix("UInt") {
+            return ExprSyntax("\(raw: defaultValue)")
+        } else if type == "Date" {
+            fatalError("Default value support for Date not implemented yet!")
         }
+    }
+    if !member.required || !member.outputRequired {
+        return NilLiteralExprSyntax().as(ExprSyntax.self)
+    }
+    return nil
+}
+
+@FunctionParameterListBuilder
+func buildInitializerParameterList(for members: [APIObject.Member], includeDeprecated: Bool = false) -> FunctionParameterListSyntax {
+    for member in members where includeDeprecated || !member.disabled {
+        FunctionParameterSyntax(
+            firstName: "\(raw: member.identifier)",
+            type: TypeSyntax("\(raw: getSwiftType(for: member, isInitializer: true))"),
+            defaultValue: buildDefaultArgument(for: member).map { .init(value: $0) }
+        )
     }
 }
 
@@ -40,12 +58,9 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
         public struct \(raw: input): \(raw: pagination != nil ? "TCPaginatedRequest" : "TCRequestModel")
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
+        buildModelMemberList(for: input, usage: .in, members: inputMembers)
 
-        for member in inputMembers {
-            DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: buildDocumentation(summary: member.document))) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))")
-        }
-
-        try buildModelInitializerDeclSyntax(with: inputMembers)
+        try buildModelInitializerDecls(for: input, members: inputMembers)
 
         try buildModelCodingKeys(for: inputMembers)
 
@@ -56,11 +71,26 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
 }
 
 @MemberBlockItemListBuilder
-func buildResponseModelMemberList(for output: APIObject, documentation: Bool = true, wrapped: Bool = false) -> MemberBlockItemListSyntax {
-    for member in output.members {
-        let getter = AccessorBlockSyntax(accessors: .getter("self.data.\(raw: member.identifier)"))
-        let binding = PatternBindingSyntax(pattern: PatternSyntax("\(raw: member.escapedIdentifier)"), typeAnnotation: .init(type: TypeSyntax("\(raw: getSwiftType(for: member))")), accessorBlock: wrapped ? getter : nil)
-        DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: documentation ? buildDocumentation(summary: member.document) : "", computed: wrapped)) \(binding)")
+func buildModelMemberList(for model: String, usage: APIObject.Usage?, members: [APIObject.Member], documentation: Bool = true, wrappedResponse: Bool = false) -> MemberBlockItemListSyntax {
+    for member in members {
+        let accessor = wrappedResponse ? AccessorBlockSyntax(accessors: .getter("self.data.\(raw: member.identifier)")) : nil
+        let initializer: InitializerClauseSyntax? = {
+            guard usage != .out, member.disabled else {
+                return nil
+            }
+            guard let defaultValue = buildDefaultArgument(for: member) else {
+                fatalError("Disabled member '\(member.identifier)' must have default value.")
+            }
+            return .init(value: defaultValue)
+        }()
+
+        let binding = PatternBindingSyntax(
+            pattern: PatternSyntax("\(raw: member.escapedIdentifier)"),
+            typeAnnotation: .init(type: TypeSyntax("\(raw: getSwiftType(for: member))")),
+            initializer: initializer,
+            accessorBlock: accessor
+        )
+        DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: documentation ? buildDocumentation(summary: member.document) : "", computed: wrappedResponse, deprecated: member.disabled)) \(binding)")
     }
 }
 
@@ -74,11 +104,11 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bo
             DeclSyntax("private let data: Wrapped")
 
             try StructDeclSyntax("private struct Wrapped: Codable") {
-                buildResponseModelMemberList(for: metadata, documentation: false)
+                buildModelMemberList(for: output, usage: .out, members: metadata.members, documentation: false)
                 try buildModelCodingKeys(for: metadata.members)
             }
 
-            buildResponseModelMemberList(for: metadata, wrapped: true)
+            buildModelMemberList(for: output, usage: .out, members: metadata.members, wrappedResponse: true)
 
             DeclSyntax("""
                 /// 唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。
@@ -92,7 +122,7 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bo
                 }
                 """)
         } else {
-            buildResponseModelMemberList(for: metadata)
+            buildModelMemberList(for: output, usage: .out, members: metadata.members)
             try buildModelCodingKeys(for: metadata.members)
         }
 
@@ -113,21 +143,27 @@ func buildGeneralModelDecl(for model: String, metadata: APIObject) throws -> Str
         """) {
         let members = metadata.members
 
-        for member in members {
-            DeclSyntax("\(raw: publicLetWithWrapper(for: member, documentation: buildDocumentation(summary: member.document))) \(raw: member.escapedIdentifier): \(raw: getSwiftType(for: member))")
-        }
+        buildModelMemberList(for: model, usage: metadata.usage, members: members)
 
         if metadata.initializable {
-            try buildModelInitializerDeclSyntax(with: members)
+            try buildModelInitializerDecls(for: model, members: members)
         }
 
         try buildModelCodingKeys(for: members)
     }
 }
 
-func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) throws -> InitializerDeclSyntax {
-    try InitializerDeclSyntax("public init(\(buildInitializerParameterList(for: members)))") {
-        for member in members {
+@MemberBlockItemListBuilder
+func buildModelInitializerDecls(for model: String, members: [APIObject.Member]) throws -> MemberBlockItemListSyntax {
+    try buildModelInitializerDeclSyntax(for: model, members: members)
+    if members.contains(where: \.disabled) {
+        try buildModelInitializerDeclSyntax(for: model, members: members, deprecated: true)
+    }
+}
+
+func buildModelInitializerDeclSyntax(for model: String, members: [APIObject.Member], deprecated: Bool = false) throws -> InitializerDeclSyntax {
+    let decl = try InitializerDeclSyntax("public init(\(buildInitializerParameterList(for: members, includeDeprecated: deprecated)))") {
+        for member in members where !member.disabled {
             if member.dateType != nil {
                 ExprSyntax("""
                     self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
@@ -137,6 +173,11 @@ func buildModelInitializerDeclSyntax(with members: [APIObject.Member]) throws ->
                 ExprSyntax("self.\(raw: identifier == "init" ? "`init`" : identifier) = \(raw: member.escapedIdentifier)")
             }
         }
+    }
+    if deprecated, let availability = buildModelMemberDeprecationAttribute(for: members, in: model, functionNameBuilder: { "init(\($0))" }) {
+        return decl.with(\.attributes, [.attribute(availability).with(\.trailingTrivia, .newline)])
+    } else {
+        return decl
     }
 }
 
