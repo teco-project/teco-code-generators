@@ -33,6 +33,7 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
 }
 
 private func buildNextInputExpr(for type: String, members: [APIObject.Member], kind: Pagination) -> ExprSyntax {
+    let members = members.filter({ !$0.disabled })
     var parameters = OrderedDictionary(members.map({ ($0.identifier, "self.\($0.identifier)") }), uniquingKeysWith: { $1 })
     switch kind {
     case .token(let input, let output):
