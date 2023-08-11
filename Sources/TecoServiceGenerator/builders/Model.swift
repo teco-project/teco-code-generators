@@ -2,7 +2,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
 
-func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in model: String, functionNameBuilder: @escaping (String) -> String) -> AttributeSyntax? {
+func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in model: String? = nil, functionNameBuilder: @escaping (String) -> String) -> AttributeSyntax? {
     guard case let deprecated = members.filter(\.disabled),
           let message = deprecationMessage(for: deprecated.map(\.identifier), in: model) else {
         return nil
@@ -42,7 +42,7 @@ func buildDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
 }
 
 @FunctionParameterListBuilder
-func buildInitializerParameterList(for members: [APIObject.Member], includeDeprecated: Bool = true) -> FunctionParameterListSyntax {
+func buildInitializerParameterList(for members: [APIObject.Member], includeDeprecated: Bool = false) -> FunctionParameterListSyntax {
     for member in members where includeDeprecated || !member.disabled {
         FunctionParameterSyntax(
             firstName: "\(raw: member.identifier)",
