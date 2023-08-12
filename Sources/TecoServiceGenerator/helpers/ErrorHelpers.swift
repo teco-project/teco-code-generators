@@ -45,8 +45,7 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
     return errorMap
 }
 
-@available(macOS 13, *)
-func formatErrorDescription(_ description: String) -> String {
+func formatErrorDescription(_ description: String?) -> String? {
     let codeTagRegex = Regex {
         "<code>"
         Capture(OneOrMore(.any, .reluctant))
@@ -59,7 +58,7 @@ func formatErrorDescription(_ description: String) -> String {
         Capture(OneOrMore(.any, .reluctant))
         "</a>"
     }
-    return description
+    return description?
         .replacing(codeTagRegex) { match in
             "`\(match.1)`"
         }

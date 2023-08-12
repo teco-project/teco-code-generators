@@ -6,14 +6,7 @@ struct APIError: Codable {
     private let _solution: String
     let productCNName: String?
 
-    var description: String? {
-        if #available(macOS 13, *) {
-            return self._description.map(formatErrorDescription)
-        } else {
-            // documentation style may be ugly since this platform doesn't support Regex...
-            return self._description
-        }
-    }
+    var description: String? { formatErrorDescription(self._description) }
 
     var solution: String? {
         switch self._solution {
