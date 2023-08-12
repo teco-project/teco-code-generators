@@ -34,13 +34,10 @@ struct APIModel: Codable {
         }
 
         var deprecationMessage: String? {
-            guard self.status != .online else { return nil }
-            if #available(macOS 13, *) {
-                return self._document.split(separator: "\n\n").first.map(String.init)
-            } else {
-                // message may be stripped since this platform doesn't support Regex...
-                return self._document.split(whereSeparator: \.isNewline).first.map(String.init)
+            guard self.status != .online else {
+                return nil
             }
+            return self._document.split(separator: "\n\n").first.map(String.init)
         }
 
         enum CodingKeys: String, CodingKey {

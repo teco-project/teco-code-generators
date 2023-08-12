@@ -4,7 +4,7 @@ struct APIObject: Codable {
     private let _type: `Type`?
     var usage: Usage?
 
-    var document: String { self._document == "无" ? "" : self._document }
+    var document: String? { formatModelDocumentation(self._document) }
     var type: `Type` { self._type ?? .object }
     var initializable: Bool { self.usage == .in || self.usage == .both }
 
@@ -33,7 +33,7 @@ struct APIObject: Codable {
         let member: String
         let type: APIObject.`Type`
 
-        var document: String { self._document == "无" ? "" : self._document }
+        var document: String? { formatModelDocumentation(self._document) }
         var disabled: Bool { self._disabled ?? false }
         var required: Bool { self._required ?? true }
         var outputRequired: Bool { self._output_required ?? true }

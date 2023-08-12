@@ -1,5 +1,5 @@
 @_implementationOnly import OrderedCollections
-import RegexBuilder
+@_implementationOnly import RegexBuilder
 
 func getErrorDomain(from code: String) -> String? {
     let components = code.split(separator: ".")
@@ -45,8 +45,7 @@ func generateDomainedErrorMap(from errors: [APIError], for domain: String) -> Or
     return errorMap
 }
 
-@available(macOS 13, *)
-func formatErrorDescription(_ description: String) -> String {
+func formatErrorDescription(_ description: String?) -> String? {
     let codeTagRegex = Regex {
         "<code>"
         Capture(OneOrMore(.any, .reluctant))
@@ -59,7 +58,7 @@ func formatErrorDescription(_ description: String) -> String {
         Capture(OneOrMore(.any, .reluctant))
         "</a>"
     }
-    return description
+    return description?
         .replacing(codeTagRegex) { match in
             "`\(match.1)`"
         }
@@ -67,4 +66,3 @@ func formatErrorDescription(_ description: String) -> String {
             "[\(match.2)](\(match.1))"
         }
 }
-
