@@ -138,7 +138,7 @@ func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, out
     try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         ///
-        /// - Returns: `AsyncSequence`s of `\(raw: output.itemType!)` and `\(raw: metadata.output)` that can be iterated over asynchronously on demand.
+        /// - Returns: `AsyncSequence`s of ``\(raw: output.itemType!)`` and ``\(raw: metadata.output)`` that can be iterated over asynchronously on demand.
         \(buildActionAttributeList(for: metadata, discardableResult: false))
         public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)>
         """) {
