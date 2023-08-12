@@ -1,3 +1,4 @@
+@_implementationOnly import RegexBuilder
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
@@ -95,6 +96,39 @@ func deprecationMessage(for members: [String], in object: String? = nil) -> Stri
     var list = members.map({ "'\($0)'" })
     let last = list.removeLast()
     return "\(list.joined(separator: ", ")) and \(last) are \(deprecated). Setting these parameters has no effect."
+}
+
+func formatModelDocumentation(_ documentation: String?) -> String? {
+    guard let documentation, !documentation.isEmpty, documentation != "无" else {
+        return nil
+    }
+
+    let lineBreakRegex = Regex {
+        ZeroOrMore {
+            ZeroOrMore(.whitespace)
+            One(.newlineSequence)
+        }
+        ChoiceOf {
+            Repeat(count: 2) {
+                ZeroOrMore(.whitespace)
+                One(.newlineSequence)
+            }
+            OneOrMore {
+                ZeroOrMore(.whitespace)
+                "<br"
+                ZeroOrMore(.whitespace)
+                Optionally("/")
+                ">"
+            }
+        }
+        ZeroOrMore {
+            ChoiceOf {
+                One(.newlineSequence)
+                One(.whitespace)
+            }
+        }
+    }
+    return documentation.replacing(lineBreakRegex, with: { _ in "\n\n" })
 }
 
 

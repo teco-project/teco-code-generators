@@ -1,5 +1,5 @@
 @_implementationOnly import OrderedCollections
-import RegexBuilder
+@_implementationOnly import RegexBuilder
 
 func getErrorDomain(from code: String) -> String? {
     let components = code.split(separator: ".")
@@ -66,4 +66,3 @@ func formatErrorDescription(_ description: String?) -> String? {
             "[\(match.2)](\(match.1))"
         }
 }
-
