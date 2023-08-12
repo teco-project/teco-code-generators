@@ -103,32 +103,30 @@ func formatModelDocumentation(_ documentation: String?) -> String? {
         return nil
     }
 
-    let lineBreakRegex = Regex {
+    let brTagsWithNewlinesAndWhitespacesRegex = Regex {
+        ZeroOrMore {
+            One(.newlineSequence)
+            ZeroOrMore(.whitespace)
+        }
+        OneOrMore {
+            "<br"
+            ZeroOrMore(.whitespace)
+            Optionally("/")
+            ">"
+            ZeroOrMore(.whitespace)
+        }
         ZeroOrMore {
             ZeroOrMore(.whitespace)
             One(.newlineSequence)
         }
-        ChoiceOf {
-            Repeat(count: 2) {
-                ZeroOrMore(.whitespace)
-                One(.newlineSequence)
-            }
-            OneOrMore {
-                ZeroOrMore(.whitespace)
-                "<br"
-                ZeroOrMore(.whitespace)
-                Optionally("/")
-                ">"
-            }
-        }
-        ZeroOrMore {
-            ChoiceOf {
-                One(.newlineSequence)
-                One(.whitespace)
-            }
-        }
     }
-    return documentation.replacing(lineBreakRegex, with: { _ in "\n\n" })
+    let threeOrMoreNewlinesRegex = Regex {
+        Repeat(.newlineSequence, count: 3)
+        ZeroOrMore(.newlineSequence)
+    }
+    return documentation
+        .replacing(brTagsWithNewlinesAndWhitespacesRegex, with: { _ in "\n\n" })
+        .replacing(threeOrMoreNewlinesRegex, with: { _ in "\n\n" })
 }
 
 
