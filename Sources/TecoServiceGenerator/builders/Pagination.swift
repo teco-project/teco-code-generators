@@ -3,9 +3,10 @@ import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
 
 func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
-    DeclSyntax("""
-        /// Extract the returned item list from the paginated response.
-        public func getItems() -> [\(raw: getSwiftMemberType(for: field.metadata))] {
+    let memberType = getSwiftMemberType(for: field.metadata)
+    return DeclSyntax("""
+        /// Extract the returned ``\(raw: memberType)`` list from the paginated response.
+        public func getItems() -> [\(raw: memberType)] {
             self.\(raw: field.key)\(raw: field.metadata.optional || field.key.contains("?") ? " ?? []" : "")
         }
         """)
