@@ -23,21 +23,11 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <br> to new paragraph
     do {
         let brTagsWithNewlinesAndWhitespacesRegex = Regex {
-            ZeroOrMore {
-                One(.newlineSequence)
-                ZeroOrMore(.whitespace)
-            }
-            OneOrMore {
-                "<br"
-                ZeroOrMore(.whitespace)
-                Optionally("/")
-                ">"
-                ZeroOrMore(.whitespace)
-            }
-            ZeroOrMore {
-                ZeroOrMore(.whitespace)
-                One(.newlineSequence)
-            }
+            "<br"
+            ZeroOrMore(.whitespace)
+            Optionally("/")
+            ">"
+            ZeroOrMore(.whitespace)
         }
         documentation.replace(brTagsWithNewlinesAndWhitespacesRegex) { _ in "\n\n" }
     }
@@ -90,12 +80,13 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Merge three or more newlines to two
     do {
         let threeOrMoreNewlinesRegex = Regex {
-            Repeat(.newlineSequence, count: 3)
-            ZeroOrMore(.newlineSequence)
+            One(.newlineSequence)
+            Repeat(2...) {
+                ZeroOrMore(.whitespace)
+                One(.newlineSequence)
+            }
         }
         documentation.replace(threeOrMoreNewlinesRegex) { _ in "\n\n" }
     }
     return documentation.trimmingCharacters(in: .whitespacesAndNewlines)
 }
-
-
