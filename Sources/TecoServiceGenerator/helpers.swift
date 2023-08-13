@@ -85,6 +85,36 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(preTagRegex, with: \.1)
     }
 
+    // Convert <a> to [text](link)
+    do {
+        let aTagRegex = Regex {
+            "<a "
+            ZeroOrMore(.any, .reluctant)
+            "href=\""
+            Capture {
+                OneOrMore(.any, .reluctant)
+            }
+            "\""
+            ZeroOrMore(.any, .reluctant)
+            ">"
+            Optionally("[")
+            Capture {
+                OneOrMore(.any, .reluctant)
+            }
+            Optionally("]")
+            "</a>"
+        }
+        documentation.replace(aTagRegex) { match in
+            if match.2.isEmpty {
+                return ""
+            }
+            if match.1.isEmpty || match.1.hasPrefix("#") {
+                return String(match.2)
+            }
+            return "[\(match.2)](\(match.1))"
+        }
+    }
+
     // Convert <code> to code block
     do {
         let codeTagRegex = Regex {
