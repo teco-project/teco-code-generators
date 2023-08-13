@@ -226,6 +226,40 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert `>?` to attention block
+    do {
+        let attentionMarkRegex = Regex {
+            Optionally(.newlineSequence)
+            ">?"
+            Capture {
+                ZeroOrMore(.anyNonNewline)
+            }
+        }
+        let attentionPrefixRegex = Regex {
+            ZeroOrMore(.whitespace)
+            ZeroOrMore {
+                ChoiceOf {
+                    ">"
+                    "-"
+                }
+            }
+            ZeroOrMore(.whitespace)
+            Capture {
+                ZeroOrMore(.anyNonNewline)
+            }
+        }
+        documentation.replace(attentionMarkRegex) { match in
+            if match.1.allSatisfy(\.isWhitespace) {
+                return "\n#### Attention\n"
+            }
+            guard let contentMatch = try? attentionPrefixRegex.wholeMatch(in: match.1) else {
+                assertionFailure("Unable to extract content in attention block.")
+                return "\(match.1)"
+            }
+            return "\n- Attention: \(contentMatch.1)"
+        }
+    }
+
     // Merge three or more newlines to two
     do {
         let threeOrMoreNewlinesRegex = Regex {
