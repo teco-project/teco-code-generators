@@ -125,6 +125,27 @@ func formatModelDocumentation(_ documentation: String?) -> String? {
         documentation.replace(brTagsWithNewlinesAndWhitespacesRegex) { _ in "\n\n" }
     }
 
+    // Strip <div> tags
+    do {
+        let divTagRegex = Regex {
+            "<div"
+            ZeroOrMore(.any, .reluctant)
+            ">"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            Capture {
+                ChoiceOf {
+                    "</div>"
+                    One(.newlineSequence)
+                }
+            }
+        }
+        documentation.replace(divTagRegex) { match in
+            match.2 == "</div>" ? match.1 : "\(match.1)\n"
+        }
+    }
+
     // Convert <b> and <strong> to **bold**
     do {
         let bTagRegex = Regex {
