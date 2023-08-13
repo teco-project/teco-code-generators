@@ -260,6 +260,27 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Remove extra "\n>\n" sequence
+    do {
+        let unwantedAngleRegex = Regex {
+            One(.newlineSequence)
+            ">"
+            ZeroOrMore(.whitespace, .reluctant)
+            One(.newlineSequence)
+        }
+        let documentationCopy = documentation
+        documentation.replace(unwantedAngleRegex) { match in
+            guard match.endIndex < documentationCopy.endIndex, documentationCopy[match.endIndex] == ">" else {
+                if documentationCopy[documentationCopy.index(before: match.startIndex)].isNewline {
+                    return ""
+                } else {
+                    return "\n"
+                }
+            }
+            return .init(match.output)
+        }
+    }
+
     // Merge three or more newlines to two
     do {
         let threeOrMoreNewlinesRegex = Regex {
