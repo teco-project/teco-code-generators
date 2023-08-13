@@ -107,6 +107,20 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert <del> to ~~deleted~~
+    do {
+        let delTagRegex = Regex {
+            "<del>"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            "</del>"
+        }
+        documentation.replace(delTagRegex) { match in
+            match.1.isEmpty ? "" : "~~\(match.1)~~"
+        }
+    }
+
     // Convert <font> to _italic_
     do {
         let fontTagRegex = Regex {
