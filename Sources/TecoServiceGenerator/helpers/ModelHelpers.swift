@@ -99,34 +99,65 @@ func deprecationMessage(for members: [String], in object: String? = nil) -> Stri
 }
 
 func formatModelDocumentation(_ documentation: String?) -> String? {
-    guard let documentation, !documentation.isEmpty, documentation != "无" else {
+    guard var documentation, !documentation.isEmpty, documentation != "无" else {
         return nil
     }
 
-    let brTagsWithNewlinesAndWhitespacesRegex = Regex {
-        ZeroOrMore {
-            One(.newlineSequence)
-            ZeroOrMore(.whitespace)
+    // Convert <br> to new paragraph
+    do {
+        let brTagsWithNewlinesAndWhitespacesRegex = Regex {
+            ZeroOrMore {
+                One(.newlineSequence)
+                ZeroOrMore(.whitespace)
+            }
+            OneOrMore {
+                "<br"
+                ZeroOrMore(.whitespace)
+                Optionally("/")
+                ">"
+                ZeroOrMore(.whitespace)
+            }
+            ZeroOrMore {
+                ZeroOrMore(.whitespace)
+                One(.newlineSequence)
+            }
         }
-        OneOrMore {
-            "<br"
-            ZeroOrMore(.whitespace)
-            Optionally("/")
-            ">"
-            ZeroOrMore(.whitespace)
+        documentation.replace(brTagsWithNewlinesAndWhitespacesRegex) { _ in "\n\n" }
+    }
+
+    // Convert <b> and <strong> to **bold**
+    do {
+        let bTagRegex = Regex {
+            "<b>"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            "</b>"
         }
-        ZeroOrMore {
-            ZeroOrMore(.whitespace)
-            One(.newlineSequence)
+        let strongTagRegex = Regex {
+            "<strong>"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            "</strong>"
+        }
+        for tagRegex in [bTagRegex, strongTagRegex] {
+            documentation.replace(tagRegex) { match in
+                let content = match.1
+                return content.isEmpty ? "" : "**\(content)**"
+            }
         }
     }
-    let threeOrMoreNewlinesRegex = Regex {
-        Repeat(.newlineSequence, count: 3)
-        ZeroOrMore(.newlineSequence)
+
+    // Merge three or more newlines to two
+    do {
+        let threeOrMoreNewlinesRegex = Regex {
+            Repeat(.newlineSequence, count: 3)
+            ZeroOrMore(.newlineSequence)
+        }
+        documentation.replace(threeOrMoreNewlinesRegex) { _ in "\n\n" }
     }
-    return documentation
-        .replacing(brTagsWithNewlinesAndWhitespacesRegex, with: { _ in "\n\n" })
-        .replacing(threeOrMoreNewlinesRegex, with: { _ in "\n\n" })
+    return documentation.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 
