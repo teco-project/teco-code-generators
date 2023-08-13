@@ -66,6 +66,35 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(unclosedDivTagRegex, with: \.1)
     }
 
+    // Convert <code> to code block
+    do {
+        let codeTagRegex = Regex {
+            Capture {
+                ZeroOrMore(newlineAndWhitespaceRegex)
+            }
+            "<code>"
+            Capture {
+                ZeroOrMore(.any)
+            }
+            "</code>"
+        }
+        documentation.replace(codeTagRegex) { match in
+            let leadingBlank = match.1
+            let code = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
+            if code.contains(where: \.isNewline) || leadingBlank.contains(where: \.isNewline) {
+                return """
+                
+                ```
+                \(code)
+                ```
+                
+                """
+            } else {
+                return "\(leadingBlank)`\(match.2)`"
+            }
+        }
+    }
+
     // Convert <b> and <strong> to **bold**
     do {
         let bTagRegex = Regex {
