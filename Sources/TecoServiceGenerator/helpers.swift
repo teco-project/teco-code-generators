@@ -66,6 +66,18 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(unclosedDivTagRegex, with: \.1)
     }
 
+    // Strip <pre> tags
+    do {
+        let preTagRegex = Regex {
+            "<pre>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</pre>"
+        }
+        documentation.replace(preTagRegex, with: \.1)
+    }
+
     // Convert <code> to code block
     do {
         let codeTagRegex = Regex {
