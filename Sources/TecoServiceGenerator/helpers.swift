@@ -39,18 +39,24 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(.any, .reluctant)
             ">"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
+            "</div>"
+        }
+        let unclosedDivTagRegex = Regex {
+            "<div"
+            ZeroOrMore(.any, .reluctant)
+            ">"
             Capture {
-                ChoiceOf {
-                    "</div>"
-                    One(.newlineSequence)
-                }
+                ZeroOrMore(.anyNonNewline)
+                One(.newlineSequence)
             }
         }
-        documentation.replace(divTagRegex) { match in
-            match.2 == "</div>" ? match.1 : "\(match.1)\n"
+        // Do this one by one to handle nested <div>
+        while let match = documentation.firstMatch(of: divTagRegex) {
+            documentation.replaceSubrange(match.range, with: match.1)
         }
+        documentation.replace(unclosedDivTagRegex, with: \.1)
     }
 
     // Convert <b> and <strong> to **bold**
