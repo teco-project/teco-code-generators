@@ -28,9 +28,16 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <br> to new paragraph
     do {
         let brTagsWithTrailingWhitespacesRegex = Regex {
-            "<br"
-            ZeroOrMore(.whitespace)
-            Optionally("/")
+            "<"
+            ChoiceOf {
+                Regex {
+                    "br"
+                    ZeroOrMore(.whitespace)
+                    Optionally("/")
+                }
+                // Special handling for typo...
+                "/br"
+            }
             ">"
             ZeroOrMore(.whitespace)
         }
