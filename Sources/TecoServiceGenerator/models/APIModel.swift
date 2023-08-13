@@ -25,11 +25,11 @@ struct APIModel: Codable {
             }
         }
 
-        var document: String {
+        var document: String? {
             if let deprecationMessage {
-                return self._document.dropFirst(deprecationMessage.count).trimmingCharacters(in: .whitespacesAndNewlines)
+                return formatDocumentation(self._document.dropFirst(deprecationMessage.count))
             } else {
-                return self._document.trimmingCharacters(in: .whitespacesAndNewlines)
+                return formatDocumentation(self._document)
             }
         }
 
