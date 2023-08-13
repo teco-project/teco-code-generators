@@ -20,16 +20,21 @@ func formatDocumentation(_ documentation: String?) -> String? {
         return nil
     }
 
+    let newlineAndWhitespaceRegex = ChoiceOf {
+        One(.newlineSequence)
+        One(.whitespace)
+    }
+
     // Convert <br> to new paragraph
     do {
-        let brTagsWithNewlinesAndWhitespacesRegex = Regex {
+        let brTagsWithTrailingWhitespacesRegex = Regex {
             "<br"
             ZeroOrMore(.whitespace)
             Optionally("/")
             ">"
             ZeroOrMore(.whitespace)
         }
-        documentation.replace(brTagsWithNewlinesAndWhitespacesRegex) { _ in "\n\n" }
+        documentation.replace(brTagsWithTrailingWhitespacesRegex) { _ in "\n\n" }
     }
 
     // Strip <div> tags
@@ -38,9 +43,11 @@ func formatDocumentation(_ documentation: String?) -> String? {
             "<div"
             ZeroOrMore(.any, .reluctant)
             ">"
+            ZeroOrMore(newlineAndWhitespaceRegex)
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
+            ZeroOrMore(newlineAndWhitespaceRegex)
             "</div>"
         }
         let unclosedDivTagRegex = Regex {
