@@ -107,6 +107,28 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert <font> to _italic_
+    do {
+        let fontTagRegex = Regex {
+            "<font"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            ">"
+            Capture {
+                ZeroOrMore(.anyNonNewline, .reluctant)
+            }
+            "</font>"
+        }
+        documentation.replace(fontTagRegex) { match in
+            // Only apply style if there's attribute on <font>
+            guard !match.1.allSatisfy(\.isWhitespace), !match.2.isEmpty else {
+                return match.2
+            }
+            return "_\(match.2)_"
+        }
+    }
+
     // Convert <b> and <strong> to **bold**
     do {
         let bTagRegex = Regex {
@@ -125,8 +147,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
         for tagRegex in [bTagRegex, strongTagRegex] {
             documentation.replace(tagRegex) { match in
-                let content = match.1
-                return content.isEmpty ? "" : "**\(content)**"
+                match.1.isEmpty ? "" : "**\(match.1)**"
             }
         }
     }
