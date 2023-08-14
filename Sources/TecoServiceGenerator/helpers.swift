@@ -226,6 +226,28 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert <h1> - <h5> to #
+    do {
+        let hTagRegex = Regex {
+            "<h"
+            Capture(.digit)
+            ZeroOrMore(.any, .reluctant)
+            ">"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</h"
+            One(.digit)
+            ">"
+        }
+        documentation.replace(hTagRegex) { match in
+            guard let level = Int(match.1), (1...5).contains(level) else {
+                fatalError("Invalid header level <h\(match.1)>")
+            }
+            return "\n\(String(repeating: "#", count: level)) \(match.2)\n"
+        }
+    }
+
     // Convert `>?` to attention block
     do {
         let attentionMarkRegex = Regex {
