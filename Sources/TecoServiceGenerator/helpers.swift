@@ -15,6 +15,10 @@ func formatDocumentation(_ documentation: Substring?) -> String? {
     formatDocumentation(documentation.map(String.init))
 }
 
+func zipMarkdownLine(_ text: Substring) -> Substring {
+    text.replacing(.newlineSequence, with: " ")
+}
+
 func formatDocumentation(_ documentation: String?) -> String? {
     guard var documentation, !documentation.isEmpty, documentation != "无" else {
         return nil
@@ -82,7 +86,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ">"
             ZeroOrMore(.whitespace)
         }
-        documentation.replace(brTagsWithTrailingWhitespacesRegex) { _ in "\n\n" }
+        documentation.replace(brTagsWithTrailingWhitespacesRegex, with: "\n\n")
     }
 
     // Convert <ul> and <li> to list
@@ -227,7 +231,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             if match.1.isEmpty || match.1.hasPrefix("#") {
                 return String(match.2)
             }
-            return "[\(match.2)](\(match.1))"
+            return "[\(zipMarkdownLine(match.2))](\(match.1))"
         }
     }
 
@@ -236,12 +240,12 @@ func formatDocumentation(_ documentation: String?) -> String? {
         let delTagRegex = Regex {
             "<del>"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             "</del>"
         }
         documentation.replace(delTagRegex) { match in
-            match.1.isEmpty ? "" : "~~\(match.1)~~"
+            match.1.isEmpty ? "" : "~~\(zipMarkdownLine(match.1))~~"
         }
     }
 
@@ -254,7 +258,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             }
             ">"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             "</font>"
         }
@@ -263,7 +267,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             guard match.1.contains("color="), !match.2.isEmpty else {
                 return match.2
             }
-            return "_\(match.2)_"
+            return "_\(zipMarkdownLine(match.2))_"
         }
     }
 
@@ -272,20 +276,20 @@ func formatDocumentation(_ documentation: String?) -> String? {
         let bTagRegex = Regex {
             "<b>"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             "</b>"
         }
         let strongTagRegex = Regex {
             "<strong>"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             "</strong>"
         }
         for tagRegex in [bTagRegex, strongTagRegex] {
             documentation.replace(tagRegex) { match in
-                match.1.isEmpty ? "" : "**\(match.1)**"
+                match.1.isEmpty ? "" : "**\(zipMarkdownLine(match.1))**"
             }
         }
     }
@@ -298,7 +302,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(.any, .reluctant)
             ">"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             "</h"
             One(.digit)
@@ -308,7 +312,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             guard let level = Int(match.1), (1...5).contains(level) else {
                 fatalError("Invalid header level <h\(match.1)>")
             }
-            return "\n\(String(repeating: "#", count: level)) \(match.2)\n"
+            return "\n\(String(repeating: "#", count: level)) \(zipMarkdownLine(match.2))\n"
         }
     }
 
@@ -496,7 +500,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 One(.newlineSequence)
             }
         }
-        documentation.replace(threeOrMoreNewlinesRegex) { _ in "\n\n" }
+        documentation.replace(threeOrMoreNewlinesRegex, with: "\n\n")
     }
     return documentation.trimmingCharacters(in: .whitespacesAndNewlines)
 }
