@@ -108,6 +108,27 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Strip blank lines between sibling list items
+    do {
+        let siblingListItemRegex = Regex {
+            One(.newlineSequence)
+            Capture {
+                "- "
+                ZeroOrMore(.anyNonNewline)
+            }
+            One(.newlineSequence)
+            ZeroOrMore(.whitespace)
+            One(.newlineSequence)
+            Capture {
+                "- "
+                ZeroOrMore(.anyNonNewline)
+            }
+        }
+        while let match = try? siblingListItemRegex.firstMatch(in: documentation) {
+            documentation.replaceSubrange(match.range, with: "\n\(match.1)\n\(match.2)")
+        }
+    }
+
     // Convert <code> to code block
     do {
         let codeTagRegex = Regex {
@@ -406,7 +427,20 @@ func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingN
 }
 
 func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: Substring)? {
-    // Fold all leading newlines
+    // Find the first </li> tag
+    func closeLITag(from text: Substring) -> Range<String.Index> {
+        let closingTagRegex = ChoiceOf {
+            "</li>"
+            // Special handling for typo...
+            "<l/i>"
+        }
+        guard let closing = text.firstRange(of: closingTagRegex) else {
+            let bound = text.firstIndex(where: \.isNewline) ?? text.endIndex
+            return bound..<bound
+        }
+        return closing
+    }
+    // Find all leading newlines
     let liTagWithLeadingNewlineRegex = Regex {
         ZeroOrMore {
             ChoiceOf {
@@ -416,24 +450,21 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
         }
         "<li>"
     }
-    guard let opening = text.firstRange(of: liTagWithLeadingNewlineRegex) else {
+    guard var opening = text.firstRange(of: liTagWithLeadingNewlineRegex) else {
         return nil
+    }
+    // Only consume one line break
+    if let newline = text[opening].lastIndex(where: \.isNewline) {
+        opening = newline..<opening.upperBound
     }
     // Bump the pointer to the end of nested <ul> lists
     var pointer = opening.upperBound
-    while let ulTag = firstULTag(from: text[pointer...], ignoreLevel: true) {
+    while let ulTag = firstULTag(from: text[pointer...], ignoreLevel: true),
+          ulTag.range.lowerBound < closeLITag(from: text[pointer...]).lowerBound {
         pointer = ulTag.range.upperBound
     }
     // Search for the closing tag or newline
-    let closingTagRegex = ChoiceOf {
-        "</li>"
-        // Special handling for typo...
-        "<l/i>"
-    }
-    guard let closing = text[pointer...].firstRange(of: closingTagRegex) else {
-        let bound = text[pointer...].firstIndex(where: \.isNewline) ?? text.endIndex
-        return (opening.lowerBound..<bound, text[opening.upperBound..<bound])
-    }
+    let closing = closeLITag(from: text[pointer...])
     return (opening.lowerBound..<closing.upperBound, text[opening.upperBound..<closing.lowerBound])
 }
 
