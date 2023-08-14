@@ -44,6 +44,49 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(brTagsWithTrailingWhitespacesRegex) { _ in "\n\n" }
     }
 
+    // Convert <p> to new paragraph
+    do {
+        let pTagRegex = Regex {
+            "<p"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            ">"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</p>"
+        }
+        let styleAttributeRegex = Regex {
+            "style=\""
+            Capture {
+                OneOrMore(.anyNonNewline, .reluctant)
+            }
+            "\""
+        }
+        let colorCSSRegex = Regex {
+            ZeroOrMore(.whitespace)
+            "color"
+            ZeroOrMore(.whitespace)
+            ":"
+            ZeroOrMore(.whitespace)
+            OneOrMore(.any, .reluctant)
+            ZeroOrMore(.whitespace)
+        }
+        documentation.replace(pTagRegex) { match in
+            var content = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Only apply style if there's color CSS style
+            if let styleMatch = match.1.firstMatch(of: styleAttributeRegex),
+               case let styles = styleMatch.1.split(separator: ";"),
+               styles.contains(where: { (try? colorCSSRegex.wholeMatch(in: $0)) != nil }) {
+                content = content.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .map { $0.allSatisfy(\.isWhitespace) ? $0 : "_\($0)_" }
+                    .joined(separator: "\n")
+            }
+            return "\n\n\(content)\n\n"
+        }
+    }
+
     // Strip <div> tags
     do {
         let divTagRegex = Regex {
@@ -195,8 +238,8 @@ func formatDocumentation(_ documentation: String?) -> String? {
             "</font>"
         }
         documentation.replace(fontTagRegex) { match in
-            // Only apply style if there's attribute on <font>
-            guard !match.1.allSatisfy(\.isWhitespace), !match.2.isEmpty else {
+            // Only apply style if there's color= attribute on <font>
+            guard match.1.contains("color="), !match.2.isEmpty else {
                 return match.2
             }
             return "_\(match.2)_"
