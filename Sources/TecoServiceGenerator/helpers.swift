@@ -25,6 +25,47 @@ func formatDocumentation(_ documentation: String?) -> String? {
         One(.whitespace)
     }
 
+    // Strip <div> tags
+    do {
+        let divTagRegex = Regex {
+            "<div"
+            ZeroOrMore(.any, .reluctant)
+            ">"
+            ZeroOrMore(newlineAndWhitespaceRegex)
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            ZeroOrMore(newlineAndWhitespaceRegex)
+            "</div>"
+        }
+        let unclosedDivTagRegex = Regex {
+            "<div"
+            ZeroOrMore(.any, .reluctant)
+            ">"
+            Capture {
+                ZeroOrMore(.anyNonNewline)
+                One(.newlineSequence)
+            }
+        }
+        // Do this one by one to handle nested <div>
+        while let match = documentation.firstMatch(of: divTagRegex) {
+            documentation.replaceSubrange(match.range, with: match.1)
+        }
+        documentation.replace(unclosedDivTagRegex, with: \.1)
+    }
+
+    // Strip <pre> tags
+    do {
+        let preTagRegex = Regex {
+            "<pre>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</pre>"
+        }
+        documentation.replace(preTagRegex, with: \.1)
+    }
+
     // Convert <br> to new paragraph
     do {
         let brTagsWithTrailingWhitespacesRegex = Regex {
@@ -42,6 +83,58 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(.whitespace)
         }
         documentation.replace(brTagsWithTrailingWhitespacesRegex) { _ in "\n\n" }
+    }
+
+    // Convert <ul> and <li> to list
+    do {
+        func firstTagToTransform(in text: String) -> (range: Range<String.Index>, content: Substring)? {
+            let ulTag = firstULTag(from: .init(text))
+            let liTag = firstLITag(from: .init(text))
+            switch (ulTag, liTag) {
+            case (.some(let ulTag), .some(var liTag)):
+                liTag.content = documentation[liTag.range]
+                let tag = liTag.range.lowerBound < ulTag.range.lowerBound ? liTag : ulTag
+                return (tag.range, tag.content)
+            case (.some(let ulTag), nil):
+                return ulTag
+            case (nil, .some(let liTag)):
+                return (liTag.range, documentation[liTag.range])
+            case (nil, nil):
+                return nil
+            }
+        }
+        while let tag = firstTagToTransform(in: documentation) {
+            documentation.replaceSubrange(tag.range, with: formatList(tag.content))
+        }
+    }
+
+    // Convert <code> to code block
+    do {
+        let codeTagRegex = Regex {
+            Capture {
+                ZeroOrMore(newlineAndWhitespaceRegex)
+            }
+            "<code>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</code>"
+        }
+        documentation.replace(codeTagRegex) { match in
+            let leadingBlank = match.1
+            let code = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
+            if code.contains(where: \.isNewline) || leadingBlank.contains(where: \.isNewline) {
+                return """
+                
+                ```
+                \(code)
+                ```
+                
+                """
+            } else {
+                return "\(leadingBlank)`\(match.2)`"
+            }
+        }
     }
 
     // Convert <p> to new paragraph
@@ -87,47 +180,6 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
-    // Strip <div> tags
-    do {
-        let divTagRegex = Regex {
-            "<div"
-            ZeroOrMore(.any, .reluctant)
-            ">"
-            ZeroOrMore(newlineAndWhitespaceRegex)
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-            }
-            ZeroOrMore(newlineAndWhitespaceRegex)
-            "</div>"
-        }
-        let unclosedDivTagRegex = Regex {
-            "<div"
-            ZeroOrMore(.any, .reluctant)
-            ">"
-            Capture {
-                ZeroOrMore(.anyNonNewline)
-                One(.newlineSequence)
-            }
-        }
-        // Do this one by one to handle nested <div>
-        while let match = documentation.firstMatch(of: divTagRegex) {
-            documentation.replaceSubrange(match.range, with: match.1)
-        }
-        documentation.replace(unclosedDivTagRegex, with: \.1)
-    }
-
-    // Strip <pre> tags
-    do {
-        let preTagRegex = Regex {
-            "<pre>"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-            }
-            "</pre>"
-        }
-        documentation.replace(preTagRegex, with: \.1)
-    }
-
     // Convert <a> to [text](link)
     do {
         let aTagRegex = Regex {
@@ -155,58 +207,6 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 return String(match.2)
             }
             return "[\(match.2)](\(match.1))"
-        }
-    }
-
-    // Convert <code> to code block
-    do {
-        let codeTagRegex = Regex {
-            Capture {
-                ZeroOrMore(newlineAndWhitespaceRegex)
-            }
-            "<code>"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-            }
-            "</code>"
-        }
-        documentation.replace(codeTagRegex) { match in
-            let leadingBlank = match.1
-            let code = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
-            if code.contains(where: \.isNewline) || leadingBlank.contains(where: \.isNewline) {
-                return """
-                
-                ```
-                \(code)
-                ```
-                
-                """
-            } else {
-                return "\(leadingBlank)`\(match.2)`"
-            }
-        }
-    }
-
-    // Convert <ul> and <li> to list
-    do {
-        func firstTagToTransform(in text: String) -> (range: Range<String.Index>, content: Substring)? {
-            let ulTag = firstULTag(from: .init(text))
-            let liTag = firstLITag(from: .init(text))
-            switch (ulTag, liTag) {
-            case (.some(let ulTag), .some(var liTag)):
-                liTag.content = documentation[liTag.range]
-                let tag = liTag.range.lowerBound < ulTag.range.lowerBound ? liTag : ulTag
-                return (tag.range, tag.content)
-            case (.some(let ulTag), nil):
-                return ulTag
-            case (nil, .some(let liTag)):
-                return (liTag.range, documentation[liTag.range])
-            case (nil, nil):
-                return nil
-            }
-        }
-        while let tag = firstTagToTransform(in: documentation) {
-            documentation.replaceSubrange(tag.range, with: formatList(tag.content))
         }
     }
 
