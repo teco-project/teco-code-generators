@@ -352,9 +352,13 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
         let tableCellRegex = Regex {
             ChoiceOf {
-                "<td>"
-                "<th>"
+                "<td"
+                "<th"
             }
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            ">"
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
@@ -362,6 +366,13 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 "</td>"
                 "</th>"
             }
+        }
+        let rowSpanAttributeRegex = Regex {
+            "rowspan=\""
+            Capture {
+                OneOrMore(.digit)
+            }
+            "\""
         }
         func getTableRows(from text: Substring) -> [[Substring]] {
             let content = text
@@ -371,7 +382,22 @@ func formatDocumentation(_ documentation: String?) -> String? {
             if let lowerBound = matches.first?.startIndex, content[..<lowerBound].contains(tableCellRegex) {
                 matches.insert(content[..<lowerBound], at: 0)
             }
-            return matches.map { $0.matches(of: tableCellRegex).map(\.1) }
+            var result: [[Substring]] = []
+            var rowspans: [(Substring, at: Int, upTo: Int)] = []
+            for (rowId, rowContent) in matches.enumerated() {
+                var cells: [Substring] = []
+                for cellMatch in rowContent.matches(of: tableCellRegex) {
+                    while let toInsert = rowspans.first(where: { $0.at == cells.count && $0.upTo > rowId }) {
+                        cells.append(toInsert.0)
+                    }
+                    if let rowspanMatch = cellMatch.1.firstMatch(of: rowSpanAttributeRegex), let rowspan = Int(rowspanMatch.1) {
+                        rowspans.append((cellMatch.2, cells.count, rowId + rowspan))
+                    }
+                    cells.append(cellMatch.2)
+                }
+                result.append(cells)
+            }
+            return result
         }
         func buildRow(from cells: [Substring]) -> String {
             let twoOrMoreNewlinesRegex = Regex {
