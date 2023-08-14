@@ -92,7 +92,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(.any, .reluctant)
             "href=\""
             Capture {
-                OneOrMore(.any, .reluctant)
+                OneOrMore(.anyNonNewline, .reluctant)
             }
             "\""
             ZeroOrMore(.any, .reluctant)
@@ -123,7 +123,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             }
             "<code>"
             Capture {
-                ZeroOrMore(.any)
+                ZeroOrMore(.any, .reluctant)
             }
             "</code>"
         }
@@ -186,7 +186,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
         let fontTagRegex = Regex {
             "<font"
             Capture {
-                ZeroOrMore(.anyNonNewline, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             ">"
             Capture {
@@ -234,7 +234,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(.any, .reluctant)
             ">"
             Capture {
-                ZeroOrMore(.any, .reluctant)
+                ZeroOrMore(.anyNonNewline, .reluctant)
             }
             "</h"
             One(.digit)
