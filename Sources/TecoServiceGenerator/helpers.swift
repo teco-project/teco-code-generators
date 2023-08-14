@@ -312,6 +312,100 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert <table> to GFM table
+    do {
+        let tableTagRegex = Regex {
+            "<table>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</table>"
+        }
+        let tableHeadTagRegex = Regex {
+            ChoiceOf {
+                "<thead>"
+                // Special handling for typo...
+                "<thread>"
+            }
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            ChoiceOf {
+                "</thead>"
+                // Special handling for typo...
+                "</thread>"
+            }
+        }
+        let tableBodyTagRegex = Regex {
+            "<tbody>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</tbody>"
+        }
+        let tableRowRegex = Regex {
+            "<tr>"
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            "</tr>"
+        }
+        let tableCellRegex = Regex {
+            ChoiceOf {
+                "<td>"
+                "<th>"
+            }
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            ChoiceOf {
+                "</td>"
+                "</th>"
+            }
+        }
+        func getTableRows(from text: Substring) -> [[Substring]] {
+            let content = text
+                .replacing(tableHeadTagRegex, with: \.1)
+                .replacing(tableBodyTagRegex, with: \.1)
+            var matches = content.matches(of: tableRowRegex).map(\.1)
+            if let lowerBound = matches.first?.startIndex, content[..<lowerBound].contains(tableCellRegex) {
+                matches.insert(content[..<lowerBound], at: 0)
+            }
+            return matches.map { $0.matches(of: tableCellRegex).map(\.1) }
+        }
+        func buildRow(from cells: [Substring]) -> String {
+            let twoOrMoreNewlinesRegex = Regex {
+                ZeroOrMore(.whitespace)
+                Repeat(1...) {
+                    ZeroOrMore(.whitespace)
+                    One(.newlineSequence)
+                }
+            }
+            let cellContents = cells.map { content in
+                content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .split(separator: twoOrMoreNewlinesRegex)
+                    .map { line in
+                        line.trimmingCharacters(in: .whitespaces)
+                            .split(whereSeparator: \.isNewline)
+                            .map { $0.trimmingCharacters(in: .whitespaces) }
+                            .joined(separator: " ")
+                    }
+                    .joined(separator: "<br>")
+            }
+            return "|\(cellContents.map({ $0.isEmpty ? " " : " \($0) " }).joined(separator: "|"))|"
+        }
+        documentation.replace(tableTagRegex) { match in
+            let rows = getTableRows(from: match.1)
+            return """
+                
+                \(buildRow(from: rows[0]))
+                |\([String](repeating: "---", count: rows[0].count).joined(separator: "|"))|
+                \(rows[1...].map(buildRow).joined(separator: "\n"))
+                
+                """
+        }
+    }
+
     // Convert `>?` to attention block
     do {
         let attentionMarkRegex = Regex {
