@@ -31,10 +31,13 @@ func formatDocumentation(_ documentation: String?) -> String? {
 
     // Strip <div> tags
     do {
-        let divTagRegex = Regex {
+        let unclosedDivTagRegex = Regex {
             "<div"
             ZeroOrMore(.any, .reluctant)
             ">"
+        }
+        let divTagRegex = Regex {
+            unclosedDivTagRegex
             ZeroOrMore(newlineAndWhitespaceRegex)
             Capture {
                 ZeroOrMore(.any, .reluctant)
@@ -42,20 +45,11 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ZeroOrMore(newlineAndWhitespaceRegex)
             "</div>"
         }
-        let unclosedDivTagRegex = Regex {
-            "<div"
-            ZeroOrMore(.any, .reluctant)
-            ">"
-            Capture {
-                ZeroOrMore(.anyNonNewline)
-                One(.newlineSequence)
-            }
-        }
         // Do this one by one to handle nested <div>
         while let match = documentation.firstMatch(of: divTagRegex) {
             documentation.replaceSubrange(match.range, with: match.1)
         }
-        documentation.replace(unclosedDivTagRegex, with: \.1)
+        documentation.replace(unclosedDivTagRegex, with: "")
     }
 
     // Strip <pre> tags
@@ -172,8 +166,19 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ">"
             Capture {
                 ZeroOrMore(.any, .reluctant)
+                Lookahead {
+                    ChoiceOf {
+                        "</p>"
+                        Regex {
+                            "<p"
+                            ZeroOrMore(.any, .reluctant)
+                            ">"
+                        }
+                        Anchor.endOfSubject
+                    }
+                }
             }
-            "</p>"
+            Optionally("</p>")
         }
         let styleAttributeRegex = Regex {
             "style=\""
