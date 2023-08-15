@@ -224,7 +224,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             ">"
             Optionally("[")
             Capture {
-                OneOrMore(.any, .reluctant)
+                ZeroOrMore(.any, .reluctant)
             }
             Optionally("]")
             "</a>"
@@ -324,7 +324,9 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <table> to GFM table
     do {
         let tableTagRegex = Regex {
-            "<table>"
+            "<table"
+            ZeroOrMore(.any, .reluctant)
+            ">"
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
