@@ -149,6 +149,23 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(preTagRegex, with: \.1)
     }
 
+    // Strip <span> tags
+    do {
+        let spanTagRegex = Regex {
+            htmlOpeningTagRegex(for: "span")
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            htmlClosingTagRegex(for: "span")
+        }
+        // Do this one by one to handle nested <span>
+        while let match = documentation.firstMatch(of: spanTagRegex) {
+            documentation.replaceSubrange(match.range, with: match.1)
+        }
+        // Handle unclosed <span> tags
+        documentation.replace(htmlOpeningTagRegex(for: "span"), with: "")
+    }
+
     // Convert <br> to new paragraph
     do {
         let brTagsWithTrailingWhitespacesRegex = Regex {
