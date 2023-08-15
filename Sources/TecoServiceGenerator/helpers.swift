@@ -19,6 +19,95 @@ func zipMarkdownLine(_ text: Substring) -> Substring {
     text.replacing(.newlineSequence, with: " ")
 }
 
+@RegexComponentBuilder
+func htmlOpeningTagCapturingAttributesRegex(for name: some RegexComponent<Substring>) -> some RegexComponent<(Substring, Substring?)> {
+    "<"
+    name
+    ChoiceOf {
+        Lookahead(">")
+        Regex {
+            OneOrMore(.whitespace)
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+        }
+    }
+    ">"
+}
+
+@RegexComponentBuilder
+func htmlOpeningTagRegex(for name: some RegexComponent<Substring>) -> some RegexComponent<Substring> {
+    "<"
+    name
+    ChoiceOf {
+        Lookahead(">")
+        Regex {
+            OneOrMore(.whitespace)
+            ZeroOrMore(.any, .reluctant)
+        }
+    }
+    ">"
+}
+
+@RegexComponentBuilder
+func htmlClosingTagRegex(for name: some RegexComponent<Substring>) -> some RegexComponent<Substring> {
+    "</"
+    name
+    ">"
+}
+
+@RegexComponentBuilder
+func htmlAttributeRegex(named name: some RegexComponent<Substring>) -> some RegexComponent<(Substring, Substring)> {
+    name
+    "="
+    Capture {
+        ChoiceOf {
+            Regex {
+                NegativeLookahead("\"")
+                ZeroOrMore(.any, .reluctant)
+                Lookahead {
+                    ChoiceOf {
+                        One(.whitespace)
+                        Anchor.endOfLine
+                    }
+                }
+            }
+            Regex {
+                "\""
+                ZeroOrMore(.any, .reluctant)
+                "\""
+            }
+        }
+    } transform: { value -> Substring in
+        let quotedRegex = Regex {
+            "\""
+            Capture {
+                ZeroOrMore(.any)
+            } transform: { match in
+                match.replacing(#"\""#, with: "\"")
+            }
+            "\""
+        }
+        if let quoted = value.wholeMatch(of: quotedRegex) {
+            return quoted.1
+        } else {
+            return value
+        }
+    }
+}
+
+@RegexComponentBuilder
+func htmlClosingTagRegex(for name: some RegexComponent<Substring>, @AlternationBuilder alternativeLookaheads: () -> some RegexComponent<Substring>) -> some RegexComponent<Substring> {
+    let tagRegex = htmlClosingTagRegex(for: name)
+    Lookahead {
+        ChoiceOf {
+            tagRegex
+            alternativeLookaheads()
+        }
+    }
+    Optionally(tagRegex)
+}
+
 func formatDocumentation(_ documentation: String?) -> String? {
     guard var documentation, !documentation.isEmpty, documentation != "无" else {
         return nil
@@ -31,35 +120,31 @@ func formatDocumentation(_ documentation: String?) -> String? {
 
     // Strip <div> tags
     do {
-        let unclosedDivTagRegex = Regex {
-            "<div"
-            ZeroOrMore(.any, .reluctant)
-            ">"
-        }
         let divTagRegex = Regex {
-            unclosedDivTagRegex
+            htmlOpeningTagRegex(for: "div")
             ZeroOrMore(newlineAndWhitespaceRegex)
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
             ZeroOrMore(newlineAndWhitespaceRegex)
-            "</div>"
+            htmlClosingTagRegex(for: "div")
         }
         // Do this one by one to handle nested <div>
         while let match = documentation.firstMatch(of: divTagRegex) {
             documentation.replaceSubrange(match.range, with: match.1)
         }
-        documentation.replace(unclosedDivTagRegex, with: "")
+        // Handle unclosed <div> tags
+        documentation.replace(htmlOpeningTagRegex(for: "div"), with: "")
     }
 
     // Strip <pre> tags
     do {
         let preTagRegex = Regex {
-            "<pre>"
+            htmlOpeningTagRegex(for: "pre")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</pre>"
+            htmlClosingTagRegex(for: "pre")
         }
         documentation.replace(preTagRegex, with: \.1)
     }
@@ -133,11 +218,11 @@ func formatDocumentation(_ documentation: String?) -> String? {
             Capture {
                 ZeroOrMore(newlineAndWhitespaceRegex)
             }
-            "<code>"
+            htmlOpeningTagRegex(for: "code")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</code>"
+            htmlClosingTagRegex(for: "code")
         }
         documentation.replace(codeTagRegex) { match in
             let leadingBlank = match.1
@@ -159,33 +244,14 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <p> to new paragraph
     do {
         let pTagRegex = Regex {
-            "<p"
+            htmlOpeningTagCapturingAttributesRegex(for: "p")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            ">"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-                Lookahead {
-                    ChoiceOf {
-                        "</p>"
-                        Regex {
-                            "<p"
-                            ZeroOrMore(.any, .reluctant)
-                            ">"
-                        }
-                        Anchor.endOfSubject
-                    }
-                }
+            htmlClosingTagRegex(for: "p") {
+                htmlOpeningTagRegex(for: "p")
+                Anchor.endOfSubject
             }
-            Optionally("</p>")
-        }
-        let styleAttributeRegex = Regex {
-            "style=\""
-            Capture {
-                OneOrMore(.anyNonNewline, .reluctant)
-            }
-            "\""
         }
         let colorCSSRegex = Regex {
             ZeroOrMore(.whitespace)
@@ -199,7 +265,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
         documentation.replace(pTagRegex) { match in
             var content = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
             // Only apply style if there's color CSS style
-            if let styleMatch = match.1.firstMatch(of: styleAttributeRegex),
+            if let styleMatch = match.1?.firstMatch(of: htmlAttributeRegex(named: "style")),
                case let styles = styleMatch.1.split(separator: ";"),
                styles.contains(where: { (try? colorCSSRegex.wholeMatch(in: $0)) != nil }) {
                 content = content.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
@@ -213,41 +279,35 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <a> to [text](link)
     do {
         let aTagRegex = Regex {
-            "<a "
-            ZeroOrMore(.any, .reluctant)
-            "href=\""
-            Capture {
-                OneOrMore(.anyNonNewline, .reluctant)
-            }
-            "\""
-            ZeroOrMore(.any, .reluctant)
-            ">"
+            htmlOpeningTagCapturingAttributesRegex(for: "a")
             Optionally("[")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
             Optionally("]")
-            "</a>"
+            htmlClosingTagRegex(for: "a")
         }
         documentation.replace(aTagRegex) { match in
             if match.2.isEmpty {
                 return ""
             }
-            if match.1.isEmpty || match.1.hasPrefix("#") {
-                return String(match.2)
+            guard let hrefMatch = match.1?.firstMatch(of: htmlAttributeRegex(named: "href")),
+                  case let href = hrefMatch.1.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !href.isEmpty, !href.hasPrefix("#") else {
+                return "\(match.2)"
             }
-            return "[\(zipMarkdownLine(match.2))](\(match.1))"
+            return "[\(zipMarkdownLine(match.2))](\(href))"
         }
     }
 
     // Convert <del> to ~~deleted~~
     do {
         let delTagRegex = Regex {
-            "<del>"
+            htmlOpeningTagRegex(for: "del")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</del>"
+            htmlClosingTagRegex(for: "del")
         }
         documentation.replace(delTagRegex) { match in
             match.1.isEmpty ? "" : "~~\(zipMarkdownLine(match.1))~~"
@@ -257,19 +317,15 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <font> to _italic_
     do {
         let fontTagRegex = Regex {
-            "<font"
+            htmlOpeningTagCapturingAttributesRegex(for: "font")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            ">"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-            }
-            "</font>"
+            htmlClosingTagRegex(for: "font")
         }
         documentation.replace(fontTagRegex) { match in
-            // Only apply style if there's color= attribute on <font>
-            guard match.1.contains("color="), !match.2.isEmpty else {
+            // Only apply style if there's "color" attribute on <font>
+            guard match.1?.contains(htmlAttributeRegex(named: "color")) == true, !match.2.isEmpty else {
                 return match.2
             }
             return "_\(zipMarkdownLine(match.2))_"
@@ -279,18 +335,18 @@ func formatDocumentation(_ documentation: String?) -> String? {
     // Convert <b> and <strong> to **bold**
     do {
         let bTagRegex = Regex {
-            "<b>"
+            htmlOpeningTagRegex(for: "b")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</b>"
+            htmlClosingTagRegex(for: "b")
         }
         let strongTagRegex = Regex {
-            "<strong>"
+            htmlOpeningTagRegex(for: "strong")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</strong>"
+            htmlClosingTagRegex(for: "strong")
         }
         for tagRegex in [bTagRegex, strongTagRegex] {
             documentation.replace(tagRegex) { match in
@@ -301,40 +357,32 @@ func formatDocumentation(_ documentation: String?) -> String? {
 
     // Convert <h1> - <h5> to #
     do {
-        let hTagRegex = Regex {
-            "<h"
-            Capture(.digit)
-            ZeroOrMore(.any, .reluctant)
-            ">"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
+        for level in 1...5 {
+            let hTagRegex = Regex {
+                htmlOpeningTagRegex(for: "h\(level)")
+                Capture {
+                    ZeroOrMore(.any, .reluctant)
+                }
+                htmlClosingTagRegex(for: "h\(level)")
             }
-            "</h"
-            One(.digit)
-            ">"
-        }
-        documentation.replace(hTagRegex) { match in
-            guard let level = Int(match.1), (1...5).contains(level) else {
-                fatalError("Invalid header level <h\(match.1)>")
+            documentation.replace(hTagRegex) { match in
+                return "\n\(String(repeating: "#", count: level)) \(zipMarkdownLine(match.1))\n"
             }
-            return "\n\(String(repeating: "#", count: level)) \(zipMarkdownLine(match.2))\n"
         }
     }
 
     // Convert <table> to GFM table
     do {
         let tableTagRegex = Regex {
-            "<table"
-            ZeroOrMore(.any, .reluctant)
-            ">"
+            htmlOpeningTagRegex(for: "table")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</table>"
+            htmlClosingTagRegex(for: "table")
         }
         let tableHeadTagRegex = Regex {
             ChoiceOf {
-                "<thead>"
+                htmlOpeningTagRegex(for: "thead")
                 // Special handling for typo...
                 "<thread>"
             }
@@ -342,48 +390,35 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 ZeroOrMore(.any, .reluctant)
             }
             ChoiceOf {
-                "</thead>"
+                htmlClosingTagRegex(for: "thead")
                 // Special handling for typo...
                 "</thread>"
             }
         }
         let tableBodyTagRegex = Regex {
-            "<tbody>"
+            htmlOpeningTagRegex(for: "tbody")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</tbody>"
+            htmlClosingTagRegex(for: "tbody")
         }
         let tableRowRegex = Regex {
-            "<tr>"
+            htmlOpeningTagRegex(for: "tr")
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            "</tr>"
+            htmlClosingTagRegex(for: "tr")
         }
         let tableCellRegex = Regex {
-            ChoiceOf {
-                "<td"
-                "<th"
+            let tagName = ChoiceOf {
+                "td"
+                "th"
             }
+            htmlOpeningTagCapturingAttributesRegex(for: tagName)
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            ">"
-            Capture {
-                ZeroOrMore(.any, .reluctant)
-            }
-            ChoiceOf {
-                "</td>"
-                "</th>"
-            }
-        }
-        let rowSpanAttributeRegex = Regex {
-            "rowspan=\""
-            Capture {
-                OneOrMore(.digit)
-            }
-            "\""
+            htmlClosingTagRegex(for: tagName)
         }
         func getTableRows(from text: Substring) -> [[Substring]] {
             let content = text
@@ -401,7 +436,8 @@ func formatDocumentation(_ documentation: String?) -> String? {
                     while let toInsert = rowspans.first(where: { $0.at == cells.count && $0.upTo > rowId }) {
                         cells.append(toInsert.0)
                     }
-                    if let rowspanMatch = cellMatch.1.firstMatch(of: rowSpanAttributeRegex), let rowspan = Int(rowspanMatch.1) {
+                    if let rowspanMatch = cellMatch.1?.firstMatch(of: htmlAttributeRegex(named: "rowspan")),
+                       let rowspan = Int(rowspanMatch.1) {
                         rowspans.append((cellMatch.2, cells.count, rowId + rowspan))
                     }
                     cells.append(cellMatch.2)
@@ -513,11 +549,6 @@ func formatDocumentation(_ documentation: String?) -> String? {
 }
 
 func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingNewlines: Bool = false) -> (range: Range<String.Index>, content: Substring)? {
-    let ulTagRegex = Regex {
-        "<ul"
-        ZeroOrMore(.any, .reluctant)
-        ">"
-    }
     // Fold leading newlines on demand
     let ulTagWithLeadingNewlinesRegex = Regex {
         ZeroOrMore {
@@ -526,17 +557,17 @@ func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingN
                 One(.whitespace)
             }
         }
-        ulTagRegex
+        htmlOpeningTagRegex(for: "ul")
     }
-    guard let opening = text.firstRange(of: consumeLeadingNewlines ? ulTagWithLeadingNewlinesRegex : ulTagRegex) else {
+    guard let opening = text.firstRange(of: consumeLeadingNewlines ? ulTagWithLeadingNewlinesRegex : htmlOpeningTagRegex(for: "ul").regex) else {
         return nil
     }
     // This indicates a nested context which is closed before new <ul> tags
-    if let closing = text.firstRange(of: "</ul>"), closing.lowerBound < opening.lowerBound {
+    if let closing = text.firstRange(of: htmlClosingTagRegex(for: "ul")), closing.lowerBound < opening.lowerBound {
         return nil
     }
     // This indicates the <ul> is nested in deeper context inside a <li> tag
-    if !ignoreLevel, let liTag = text.firstRange(of: "<li>"), liTag.lowerBound < opening.lowerBound {
+    if !ignoreLevel, let liTag = text.firstRange(of: htmlOpeningTagRegex(for: "li")), liTag.lowerBound < opening.lowerBound {
         return nil
     }
     // Bump the pointer to the end of nested <ul> lists
@@ -546,7 +577,7 @@ func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingN
     }
     // Search for the real closing tag
     let closingTagRegex = ChoiceOf {
-        "</ul>"
+        htmlClosingTagRegex(for: "ul")
         // Special handling for typo...
         "</u>"
     }
@@ -561,7 +592,7 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
     // Find the first </li> tag
     func closeLITag(from text: Substring) -> Range<String.Index> {
         let closingTagRegex = ChoiceOf {
-            "</li>"
+            htmlClosingTagRegex(for: "li")
             // Special handling for typo...
             "<l/i>"
         }
@@ -579,7 +610,7 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
                 One(.whitespace)
             }
         }
-        "<li>"
+        htmlOpeningTagRegex(for: "li")
     }
     guard var opening = text.firstRange(of: liTagWithLeadingNewlineRegex) else {
         return nil
