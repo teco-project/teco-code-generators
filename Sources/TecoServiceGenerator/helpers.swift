@@ -484,6 +484,44 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
+    // Convert <dx-alert> to DocC block
+    do {
+        let dxAlertTagRegex = Regex {
+            htmlOpeningTagCapturingAttributesRegex(for: "dx-alert")
+            Capture {
+                ZeroOrMore(.any, .reluctant)
+            }
+            htmlClosingTagRegex(for: "dx-alert")
+        }
+        let twoOrMoreNewlinesRegex = Repeat(2...) {
+            One(.newlineSequence)
+            ZeroOrMore(.whitespace)
+        }
+        documentation.replace(dxAlertTagRegex) { match in
+            let content = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !content.isEmpty, let infotype = match.1?.firstMatch(of: htmlAttributeRegex(named: "infotype"))?.1 else {
+                return content
+            }
+            // Select DocC block prefix based on infotype
+            let prefix: String
+            switch infotype {
+            case "notice":
+                prefix = "Attention"
+            case "explain":
+                prefix = "Note"
+            default:
+                assertionFailure("Unsupported <dx-alert> type '\(infotype)'")
+                return content
+            }
+            // Determine if the content can be displayed in a line
+            if content.contains(twoOrMoreNewlinesRegex) {
+                return "\n#### \(prefix)\n\n\(content)\n"
+            } else {
+                return "\n- \(prefix): \(zipMarkdownLine(.init(content)))\n"
+            }
+        }
+    }
+
     // Convert `>?` to attention block
     do {
         let attentionMarkRegex = Regex {
