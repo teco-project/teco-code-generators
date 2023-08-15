@@ -68,7 +68,7 @@ func htmlAttributeRegex(named name: some RegexComponent<Substring>) -> some Rege
                 Lookahead {
                     ChoiceOf {
                         One(.whitespace)
-                        Anchor.endOfLine
+                        Anchor.endOfSubjectBeforeNewline
                     }
                 }
             }
@@ -113,25 +113,18 @@ func formatDocumentation(_ documentation: String?) -> String? {
         return nil
     }
 
-    let newlineAndWhitespaceRegex = ChoiceOf {
-        One(.newlineSequence)
-        One(.whitespace)
-    }
-
     // Strip <div> tags
     do {
         let divTagRegex = Regex {
             htmlOpeningTagRegex(for: "div")
-            ZeroOrMore(newlineAndWhitespaceRegex)
             Capture {
                 ZeroOrMore(.any, .reluctant)
             }
-            ZeroOrMore(newlineAndWhitespaceRegex)
             htmlClosingTagRegex(for: "div")
         }
         // Do this one by one to handle nested <div>
         while let match = documentation.firstMatch(of: divTagRegex) {
-            documentation.replaceSubrange(match.range, with: match.1)
+            documentation.replaceSubrange(match.range, with: match.1.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         // Handle unclosed <div> tags
         documentation.replace(htmlOpeningTagRegex(for: "div"), with: "")
@@ -233,7 +226,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
     do {
         let codeTagRegex = Regex {
             Capture {
-                ZeroOrMore(newlineAndWhitespaceRegex)
+                ZeroOrMore(.whitespace)
             }
             htmlOpeningTagRegex(for: "code")
             Capture {
@@ -271,19 +264,17 @@ func formatDocumentation(_ documentation: String?) -> String? {
             }
         }
         let colorCSSRegex = Regex {
-            ZeroOrMore(.whitespace)
             "color"
             ZeroOrMore(.whitespace)
             ":"
             ZeroOrMore(.whitespace)
             OneOrMore(.any, .reluctant)
-            ZeroOrMore(.whitespace)
         }
         documentation.replace(pTagRegex) { match in
             var content = match.2.trimmingCharacters(in: .whitespacesAndNewlines)
             // Only apply style if there's color CSS style
             if let styleMatch = match.1?.firstMatch(of: htmlAttributeRegex(named: "style")),
-               case let styles = styleMatch.1.split(separator: ";"),
+               case let styles = styleMatch.1.split(separator: ";").map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }),
                styles.contains(where: { (try? colorCSSRegex.wholeMatch(in: $0)) != nil }) {
                 content = content.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
                     .map { $0.allSatisfy(\.isWhitespace) ? $0 : "_\($0)_" }
@@ -464,12 +455,9 @@ func formatDocumentation(_ documentation: String?) -> String? {
             return result
         }
         func buildRow(from cells: [Substring]) -> String {
-            let twoOrMoreNewlinesRegex = Regex {
+            let twoOrMoreNewlinesRegex = Repeat(2...) {
+                One(.newlineSequence)
                 ZeroOrMore(.whitespace)
-                Repeat(1...) {
-                    ZeroOrMore(.whitespace)
-                    One(.newlineSequence)
-                }
             }
             let cellContents = cells.map { content in
                 content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -568,12 +556,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
 func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingNewlines: Bool = false) -> (range: Range<String.Index>, content: Substring)? {
     // Fold leading newlines on demand
     let ulTagWithLeadingNewlinesRegex = Regex {
-        ZeroOrMore {
-            ChoiceOf {
-                One(.newlineSequence)
-                One(.whitespace)
-            }
-        }
+        ZeroOrMore(.whitespace)
         htmlOpeningTagRegex(for: "ul")
     }
     guard let opening = text.firstRange(of: consumeLeadingNewlines ? ulTagWithLeadingNewlinesRegex : htmlOpeningTagRegex(for: "ul").regex) else {
@@ -621,12 +604,7 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
     }
     // Find all leading newlines
     let liTagWithLeadingNewlineRegex = Regex {
-        ZeroOrMore {
-            ChoiceOf {
-                One(.newlineSequence)
-                One(.whitespace)
-            }
-        }
+        ZeroOrMore(.whitespace)
         htmlOpeningTagRegex(for: "li")
     }
     guard var opening = text.firstRange(of: liTagWithLeadingNewlineRegex) else {
