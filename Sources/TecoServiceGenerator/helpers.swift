@@ -197,6 +197,12 @@ func formatDocumentation(_ documentation: String?) -> String? {
             }
         }
         while let tag = firstTagToTransform(in: documentation) {
+            // Remove extra </ul> tags
+            if let closing = documentation.firstMatch(of: htmlClosingTagRegex(for: "ul")),
+               closing.range.lowerBound < tag.range.lowerBound {
+                documentation.replaceSubrange(closing.range, with: "")
+                continue
+            }
             documentation.replaceSubrange(tag.range, with: formatList(tag.content))
         }
     }
@@ -592,12 +598,17 @@ func formatDocumentation(_ documentation: String?) -> String? {
 }
 
 func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingNewlines: Bool = false) -> (range: Range<String.Index>, content: Substring)? {
+    let ulTagRegex = ChoiceOf {
+        htmlOpeningTagRegex(for: "ul")
+        // Special handling for typo...
+        htmlOpeningTagRegex(for: "ui")
+    }
     // Fold leading newlines on demand
     let ulTagWithLeadingNewlinesRegex = Regex {
         ZeroOrMore(.whitespace)
-        htmlOpeningTagRegex(for: "ul")
+        ulTagRegex
     }
-    guard let opening = text.firstRange(of: consumeLeadingNewlines ? ulTagWithLeadingNewlinesRegex : htmlOpeningTagRegex(for: "ul").regex) else {
+    guard let opening = text.firstRange(of: consumeLeadingNewlines ? ulTagWithLeadingNewlinesRegex : ulTagRegex.regex) else {
         return nil
     }
     // This indicates a nested context which is closed before new <ul> tags
@@ -614,10 +625,18 @@ func firstULTag(from text: Substring, ignoreLevel: Bool = false, consumeLeadingN
         pointer = ulTag.range.upperBound
     }
     // Search for the real closing tag
-    let closingTagRegex = ChoiceOf {
-        htmlClosingTagRegex(for: "ul")
-        // Special handling for typo...
-        "</u>"
+    let closingTagRegex = Regex {
+        ChoiceOf {
+            htmlClosingTagRegex(for: "ul")
+            // Special handling for typo...
+            "</u>"
+        }
+        // Match up to one trailing newline
+        ZeroOrMore {
+            NegativeLookahead(.newlineSequence)
+            One(.whitespace)
+        }
+        Optionally(.newlineSequence)
     }
     guard let closing = text[pointer...].firstRange(of: closingTagRegex) else {
         let bound = text[pointer...].firstIndex(where: \.isNewline) ?? text.endIndex
@@ -633,6 +652,7 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
             htmlClosingTagRegex(for: "li")
             // Special handling for typo...
             "<l/i>"
+            Lookahead(htmlOpeningTagRegex(for: "li"))
         }
         guard let closing = text.firstRange(of: closingTagRegex) else {
             let bound = text.firstIndex(where: \.isNewline) ?? text.endIndex
@@ -663,14 +683,29 @@ func firstLITag(from text: Substring) -> (range: Range<String.Index>, content: S
     return (opening.lowerBound..<closing.upperBound, text[opening.upperBound..<closing.lowerBound])
 }
 
-func formatList(_ list: Substring, level: Int = 0) -> String {
+func formatListItem(_ content: Substring) -> String {
+    let lines = content.trimmingPrefix(while: \.isWhitespace).split(whereSeparator: \.isNewline)
+    var formattedLines = [""]
+    // The first line is prefixed with "-"
+    if let firstLine = lines.first {
+        formattedLines.append("- \(firstLine)")
+    }
+    // Other lines are aligned using whitespaces
+    for line in lines.dropFirst() where !line.allSatisfy(\.isWhitespace) {
+        formattedLines.append("  \(line)")
+    }
+    formattedLines.append("")
+    return formattedLines.joined(separator: "\n")
+}
+
+func formatList(_ list: Substring) -> String {
     var list = list
     while let match = firstLITag(from: list) {
         var content = match.content
         while let match = firstULTag(from: content, consumeLeadingNewlines: true) {
-            content.replaceSubrange(match.range, with: formatList(match.content, level: level + 1))
+            content.replaceSubrange(match.range, with: formatList(match.content))
         }
-        list.replaceSubrange(match.range, with: "\n\(String(repeating: " ", count: level * 2))- \(content.trimmingPrefix(while: \.isWhitespace))")
+        list.replaceSubrange(match.range, with: formatListItem(content))
     }
     return String(list)
 }
