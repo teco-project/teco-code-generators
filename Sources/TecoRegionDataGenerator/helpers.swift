@@ -6,7 +6,7 @@ func getRegionMap(from regionInfo: [RegionInfo]) -> OrderedDictionary<String, St
     return .init(uncheckedUniqueKeysWithValues: regions)
 }
 
-private struct DescribeRegionsRequest: TCRequestModel {
+private struct DescribeRegionsRequest: TCRequest {
     let product: String
 
     enum CodingKeys: String, CodingKey {
@@ -14,7 +14,7 @@ private struct DescribeRegionsRequest: TCRequestModel {
     }
 }
 
-private struct DescribeRegionsResponse: TCResponseModel {
+private struct DescribeRegionsResponse: TCResponse {
     let totalCount: UInt64
     let regionSet: [RegionInfo]
     let requestId: String
@@ -53,9 +53,11 @@ struct RegionService: TCService {
     }
 
     func describeRegions(for product: String) async throws -> [RegionInfo] {
-        try await self.client.execute(action: "DescribeRegions",
-                                      serviceConfig: self.config,
-                                      input: DescribeRegionsRequest(product: product),
-                                      outputs: DescribeRegionsResponse.self).get().regionSet
+        try await self.client.execute(
+            action: "DescribeRegions",
+            serviceConfig: self.config,
+            input: DescribeRegionsRequest(product: product),
+            outputs: DescribeRegionsResponse.self)
+        .get().regionSet
     }
 }
