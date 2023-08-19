@@ -55,7 +55,7 @@ func buildInitializerParameterList(for members: [APIObject.Member], includeDepre
 func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) throws -> StructDeclSyntax {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
-        public struct \(raw: input): \(raw: pagination != nil ? "TCPaginatedRequest" : "TCRequestModel")
+        public struct \(raw: input): \(raw: pagination != nil ? "TCPaginatedRequest" : "TCRequest")
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
         buildModelMemberList(for: input, usage: .in, members: inputMembers)
@@ -97,7 +97,7 @@ func buildModelMemberList(for model: String, usage: APIObject.Usage?, members: [
 func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bool, paginated: Bool) throws -> StructDeclSyntax {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
-        public struct \(raw: output): \(raw: paginated ? "TCPaginatedResponse" : "TCResponseModel")
+        public struct \(raw: output): \(raw: paginated ? "TCPaginatedResponse" : "TCResponse")
         """) {
 
         if wrapped {
