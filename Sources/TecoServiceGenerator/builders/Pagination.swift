@@ -34,14 +34,14 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
 }
 
 private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.Member], prefix: String = "self") -> ExprSyntax {
-    func buildInputExpr(for members: [APIObject.Member], updating keyPath: some Collection<String>, to value: String, prefix: String = "self") -> FunctionCallExprSyntax {
+    func buildInputExpr(for members: [APIObject.Member], updating keyPath: some Collection<String>, to value: String, defaultValue: String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
         // Key path shouldn't be empty.
         guard let nestedIdentifier = keyPath.first else {
             fatalError("'keyPath' must not be empty.")
         }
         // Get input member list.
         let members = members.filter({ !$0.disabled && $0.type != .binary })
-        var parameters = OrderedDictionary(members.map({ ($0.identifier, "\(prefix).\($0.memberIdentifier)") }), uniquingKeysWith: { $1 })
+        var parameters = OrderedDictionary(excludeOthers ? [] : members.map({ ($0.identifier, "\(prefix).\($0.memberIdentifier)") }), uniquingKeysWith: { $1 })
         let identifier = identifierFromEscaped(nestedIdentifier)
         if case let nestedKeyPath = keyPath.dropFirst(), !nestedKeyPath.isEmpty {
             // Deep into nested objects.
@@ -51,7 +51,23 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
             else {
                 fatalError("Broken nested key '\(prefix).\(nestedIdentifier)'")
             }
-            parameters[identifier] = buildInputExpr(for: object.members, updating: nestedKeyPath, to: value, prefix: "\(prefix).\(nestedIdentifier)").formatted().description
+            let nestedPrefix = "\(prefix).\(nestedIdentifier)"
+            // Handle optional cases.
+            if nestedIdentifier.hasSuffix("?") {
+                let escapedIdentifier = identifier.swiftIdentifierEscaped()
+                let updatedValue = replacingOptionalKeyPath(nestedPrefix, in: value, with: escapedIdentifier)
+                parameters[identifier] = """
+                    {
+                        if let \(escapedIdentifier) = \(prefix).\(identifier.swiftMemberEscaped()) {
+                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, to: updatedValue, defaultValue: defaultValue, prefix: escapedIdentifier).formatted())
+                        } else {
+                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, to: defaultValue, defaultValue: defaultValue, prefix: nestedPrefix, excludeOthers: true).formatted())
+                        }
+                    }()
+                    """
+            } else {
+                parameters[identifier] = buildInputExpr(for: object.members, updating: nestedKeyPath, to: value,  defaultValue: defaultValue, prefix: nestedPrefix).formatted().description
+            }
         } else {
             // Handle unnested input normally.
             parameters[identifier] = value
@@ -71,23 +87,23 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
         }
     }()
     // Compute updated value.
-    let updatedValue = {
+    let (buildUpdatedValue, defaultValue): ((String) -> String, String) = {
         switch pagination {
         case .token(_, let output):
-            return "response.\(output.key)"
+            return ({ $0 }, "response.\(output.key)")
         case .offset(let input, let output):
             let expr = nonOptionalIntegerValue(for: input, prefix: "self.")
             if let output {
-                return "\(expr) + \(nonOptionalIntegerValue(for: output, prefix: "response."))"
+                return ({ "\(expr) + \($0)" }, nonOptionalIntegerValue(for: output, prefix: "response."))
             } else {
-                return "\(expr) + .init(response.getItems().count)"
+                return ({ "\(expr) + \($0)" }, ".init(response.getItems().count)")
             }
         case .paged(let input):
-            return "\(nonOptionalIntegerValue(for: input, prefix: "self.")) + 1"
+            return ({ "\(nonOptionalIntegerValue(for: input, prefix: "self.")) + \($0)" }, "1")
         }
     }()
     // Build the initializer call syntax.
-    return buildInputExpr(for: members, updating: inputKeyPath, to: updatedValue).as(ExprSyntax.self)!
+    return buildInputExpr(for: members, updating: inputKeyPath, to: buildUpdatedValue(defaultValue), defaultValue: removingParens(from: defaultValue)).as(ExprSyntax.self)!
 }
 
 private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {

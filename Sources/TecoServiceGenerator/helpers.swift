@@ -24,6 +24,46 @@ func identifierFromEscaped(_ identifier: String) -> String {
     }
 }
 
+func removingParens(from expression: String) -> String {
+    let parenPairRegex = Regex {
+        ZeroOrMore(.whitespace)
+        "("
+        Capture {
+            ZeroOrMore(.any)
+        }
+        ")"
+        ZeroOrMore(.whitespace)
+    }
+    if let match = expression.wholeMatch(of: parenPairRegex) {
+        return removingParens(from: "\(match.1)")
+    } else {
+        return expression
+    }
+}
+
+func replacingOptionalKeyPath(_ keyPath: String, in value: String, with concreteValue: String?) -> String {
+    let optionalAccessRegex = Regex {
+        "("
+        keyPath
+        "."
+        Capture {
+            ZeroOrMore(.any, .reluctant)
+        }
+        " ?? "
+        Capture {
+            ZeroOrMore(.any, .reluctant)
+        }
+        ")"
+    }
+    return value.replacing(optionalAccessRegex) { match in
+        if let concreteValue {
+            return match.1.contains("?") ? "(\(concreteValue).\(match.1) ?? \(match.2))" : "\(concreteValue).\(match.1)"
+        } else {
+            return "\(match.2)"
+        }
+    }
+}
+
 func skipAuthorizationParameter(for action: String) -> String {
     // Special rule for sts:AssumeRoleWithSAML & sts:AssumeRoleWithWebIdentity
     return action.hasPrefix("AssumeRoleWith") ? ", skipAuthorization: true" : ""
