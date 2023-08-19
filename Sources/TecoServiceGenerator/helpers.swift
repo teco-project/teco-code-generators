@@ -6,6 +6,24 @@ enum ServiceContext {
     static var objects: [String : APIObject] = [:]
 }
 
+func identifierFromEscaped(_ identifier: String) -> String {
+    guard !identifier.hasSuffix("?") else {
+        return identifierFromEscaped(.init(identifier.dropLast()))
+    }
+    let escapedIdentifierRegex = Regex {
+        "`"
+        Capture {
+            ZeroOrMore(.any)
+        }
+        "`"
+    }
+    if let match = identifier.wholeMatch(of: escapedIdentifierRegex) {
+        return String(match.1)
+    } else {
+        return identifier
+    }
+}
+
 func skipAuthorizationParameter(for action: String) -> String {
     // Special rule for sts:AssumeRoleWithSAML & sts:AssumeRoleWithWebIdentity
     return action.hasPrefix("AssumeRoleWith") ? ", skipAuthorization: true" : ""

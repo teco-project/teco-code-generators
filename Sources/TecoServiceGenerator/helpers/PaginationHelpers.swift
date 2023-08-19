@@ -130,7 +130,7 @@ extension APIObject {
 
     func getFieldExactly(_ match: (APIObject.Member) throws -> Bool) rethrows -> Field? {
         // If there's only one object in the model, we see it as the root of output.
-        let (members, namespace): (_, String?) = {
+        let (members, prefix): (_, String?) = {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
             if members.count == 1, members[0].type == .object, let model = ServiceContext.objects[members[0].member] {
@@ -144,9 +144,9 @@ extension APIObject {
         guard filtered.count == 1, let field = filtered.first else {
             return nil
         }
-        // If the result is nested, add its namespace as prefix.
-        if let namespace {
-            return ("\(namespace).\(field.memberIdentifier)", field)
+        // If the result is nested, add the prefix accordingly.
+        if let prefix {
+            return ("\(prefix).\(field.memberIdentifier)", field)
         } else {
             return (field.escapedIdentifier, field)
         }
