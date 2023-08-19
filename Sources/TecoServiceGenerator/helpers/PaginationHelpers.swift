@@ -146,7 +146,7 @@ extension APIObject {
         }
         // If the result is nested, add its namespace as prefix.
         if let namespace {
-            return ("\(namespace).\(field.identifier)", field)
+            return ("\(namespace).\(field.memberIdentifier)", field)
         } else {
             return (field.escapedIdentifier, field)
         }
