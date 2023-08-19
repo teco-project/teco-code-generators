@@ -109,7 +109,7 @@ func htmlClosingTagRegex(for name: some RegexComponent<Substring>, @AlternationB
 }
 
 func formatDocumentation(_ documentation: String?) -> String? {
-    guard var documentation, !documentation.isEmpty, documentation != "无" else {
+    guard var documentation, !["", "-", "无"].contains(documentation) else {
         return nil
     }
 
