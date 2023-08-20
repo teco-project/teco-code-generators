@@ -32,6 +32,10 @@ extension String {
         return false
     }
 
+    public func swiftMemberEscaped() -> String {
+        self == "init" ? "`init`" : self
+    }
+
     public func swiftIdentifierEscaped() -> String {
         (self == "init" || self.isSwiftKeyword) ? "`\(self)`" : self
     }

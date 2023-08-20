@@ -16,16 +16,16 @@ enum Pagination {
 }
 
 func getItemsField(for output: APIObject) -> APIObject.Field? {
-    output.getFieldExactly({ $0.type == .list })
+    output.getFieldExactly { $0.type == .list }
 }
 
 func getTotalCountField(for output: APIObject, associative: Bool = false) -> APIObject.Field? {
     // Output contains a total count field.
-    if let field = output.getFieldExactly({ ["TotalCount", "TotalCnt", "TotalNum", "TotalElements", "Total"].contains($0.name) && $0.type == .int }) {
+    if let field = output.getFieldExactly(predicate: { ["TotalCount", "TotalCnt", "TotalNum", "TotalElements", "Total"].contains($0.name) && $0.type == .int }) {
         return field
     }
     // Output contains a single integer field, which we assume to be total count.
-    if let field = output.getFieldExactly({ $0.type == .int }),
+    if let field = output.getFieldExactly(predicate: { $0.type == .int }),
        case let name = field.metadata.name,
        name == "Count" || name.hasPrefix("Total") || name.hasSuffix("Num")
     {
@@ -44,16 +44,16 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
                 name.removeLast(suffix.count)
                 break
             }
-            if let count = output.getFieldExactly({ $0.type == .int && countSuffices.map({ name + $0 }).contains($0.name) }) {
+            if let count = output.getFieldExactly(predicate: { $0.type == .int && countSuffices.map({ name + $0 }).contains($0.name) }) {
                 return count
             }
         }
         // Associative query into the metadata object.
-        if let field = output.getFieldExactly({ $0.type != .list }), field.metadata.type == .object {
+        if let field = output.getFieldExactly(predicate: { $0.type != .list }), field.metadata.type == .object {
             if let model = ServiceContext.objects[field.metadata.member],
                let count = getTotalCountField(for: model, associative: false)
             {
-                return ("\(field.key)\(field.metadata.optional ? "?" : "").\(count.key)", count.metadata)
+                return ("\(field.key).\(count.key)", count.metadata)
             }
         }
     }
@@ -67,10 +67,10 @@ func computePaginationKind(input: APIObject, output: APIObject, service: APIMode
         return nil
     }
     // Offset-based pagination marked by "Offset".
-    if let offset = input.getFieldExactly({ $0.name == "Offset" && $0.type == .int }) {
+    if let offset = input.getFieldExactly(predicate: { $0.name == "Offset" && $0.type == .int }) {
         // Output contains "Limit" and "Offset" fields which can be used in pagination.
-        if let _ = output.getFieldExactly({ $0.name == "Offset" && $0.type == .int }),
-           let limit = output.getFieldExactly({ $0.name == "Limit" && $0.type == .int })
+        if let _ = output.getFieldExactly(predicate: { $0.name == "Offset" && $0.type == .int }),
+           let limit = output.getFieldExactly(predicate: { $0.name == "Limit" && $0.type == .int })
         {
             return .offset(input: offset, output: limit)
         }
@@ -79,7 +79,7 @@ func computePaginationKind(input: APIObject, output: APIObject, service: APIMode
             return .offset(input: offset)
         }
         // Output contains no other field than the item list.
-        if let _ = output.getFieldExactly({ _ in true }) {
+        if let _ = output.getFieldExactly(predicate: { _ in true }) {
             return .offset(input: offset)
         }
         // The item list is named "Items" and contains a list of "Item"s.
@@ -87,68 +87,71 @@ func computePaginationKind(input: APIObject, output: APIObject, service: APIMode
             return .offset(input: offset)
         }
         // Output only contains a list and a object holding query metadata.
-        if let field = output.getFieldExactly({ $0.type != .list }), field.metadata.type == .object {
+        if let field = output.getFieldExactly(predicate: { $0.type != .list }), field.metadata.type == .object {
             return .offset(input: offset)
         }
         // Output contains a "Total" field in non-integer which we cannot make use of at the point.
-        if let _ = output.getFieldExactly({ $0.name == "Total" }) {
+        if let _ = output.getFieldExactly(predicate: { $0.name == "Total" }) {
             return .offset(input: offset)
         }
         // All other situations are regarded as illegal for pagination.
         return nil
     }
     // Token-based pagination marked by common "Token" or "Cursor" fields.
-    if let token = input.getFieldExactly({ $0.name.hasSuffix("Token") || $0.name.hasSuffix("Cursor") }) {
+    if let token = input.getFieldExactly(predicate: { $0.name.hasSuffix("Token") || $0.name.hasSuffix("Cursor") }) {
         // Output must contain an associated token field named like "[Next]Token" or "[Next]Cursor".
-        if let outputToken = output.getFieldExactly({ $0.name == token.metadata.name || $0.name == "Next\(token.metadata.name)" }) {
+        if let outputToken = output.getFieldExactly(predicate: { $0.name == token.metadata.name || $0.name == "Next\(token.metadata.name)" }) {
             // Token fields should share the same type.
             precondition(token.metadata.type == outputToken.metadata.type && token.metadata.member == outputToken.metadata.member)
             return .token(input: token, output: outputToken)
         }
     }
     // Page-based pagination marked by "PageSize".
-    if let _ = input.getFieldExactly({ $0.name == "PageSize" }) {
+    if let _ = input.getFieldExactly(predicate: { $0.name == "PageSize" }) {
         // Try to find a page number field which is incremented 1 by a time.
-        if let field = input.getFieldExactly({ ["PageNo", "PageNum", "PageNumber", "PageId", "PageIndex"].contains($0.name) && $0.type == .int }) {
+        if let field = input.getFieldExactly(predicate: { ["PageNo", "PageNum", "PageNumber", "PageId", "PageIndex"].contains($0.name) && $0.type == .int }) {
             return .paged(input: field)
         }
     }
     return nil
 }
 
-func nonOptionalIntegerValue(for field: APIObject.Field, prefix: String = "") -> String {
-    precondition(field.metadata.type == .int)
-    if field.metadata.optional {
-        return "(\(prefix)\(field.key) ?? 0)"
+func nonOptionalValue(for keyPath: String, default: String? = nil) -> String {
+    if keyPath.contains("?") {
+        guard let `default` else {
+            preconditionFailure("Unspecified default value for optional key path '\(keyPath)'")
+        }
+        return "(\(removingOptionalAccess(from: keyPath)) ?? \(`default`))"
     } else {
-        return "\(prefix)\(field.key)"
+        return keyPath
     }
 }
 
 extension APIObject {
     typealias Field = (key: String, metadata: APIObject.Member)
 
-    func getFieldExactly(_ match: (APIObject.Member) throws -> Bool) rethrows -> Field? {
+    func getFieldExactly(excludingDisabled: Bool = true, predicate: (APIObject.Member) throws -> Bool) rethrows -> Field? {
         // If there's only one object in the model, we see it as the root of output.
-        let (members, namespace): (_, String?) = {
+        let (members, prefix): (_, String?) = {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
             if members.count == 1, members[0].type == .object, let model = ServiceContext.objects[members[0].member] {
-                return (model.members, "\(members[0].identifier)\(members[0].optional ? "?" : "")")
+                return (model.members, "\(members[0].memberIdentifier)\(members[0].optional ? "?" : "")")
             } else {
                 return (members, nil)
             }
         }()
         // Check if the matched field is the only one.
-        let filtered = try members.filter(match)
+        let filtered = try members.filter(predicate).filter({ !(excludingDisabled && $0.disabled) })
         guard filtered.count == 1, let field = filtered.first else {
             return nil
         }
-        // If the result is nested, add its namespace as prefix.
-        if let namespace {
-            return ("\(namespace).\(field.identifier)", field)
+        let member = "\(field.memberIdentifier)\(field.optional ? "?" : "")"
+        // If the result is nested, add the prefix accordingly.
+        if let prefix {
+            return ("\(prefix).\(member)", field)
         } else {
-            return (field.escapedIdentifier, field)
+            return (member, field)
         }
     }
 }

@@ -169,8 +169,7 @@ func buildModelInitializerDeclSyntax(for model: String, members: [APIObject.Memb
                     self.\(raw: "_\(member.identifier)") = .init(wrappedValue: \(raw: member.escapedIdentifier))
                     """)
             } else {
-                let identifier = member.identifier
-                ExprSyntax("self.\(raw: identifier == "init" ? "`init`" : identifier) = \(raw: member.escapedIdentifier)")
+                ExprSyntax("self.\(raw: member.memberIdentifier) = \(raw: member.escapedIdentifier)")
             }
         }
     }

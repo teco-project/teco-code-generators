@@ -149,4 +149,8 @@ extension APIObject.Member {
     var escapedIdentifier: String {
         self.identifier.swiftIdentifierEscaped()
     }
+
+    var memberIdentifier: String {
+        self.identifier.swiftMemberEscaped()
+    }
 }

@@ -66,6 +66,15 @@ public class CodeGenerationFormat: BasicFormat {
         }
     }
 
+    public override func visit(_ node: LabeledExprListSyntax) -> LabeledExprListSyntax {
+        let children = node.children(viewMode: .all)
+        if children.contains(where: { $0.trimmedDescription.contains(where: \.isNewline) }) {
+            return LabeledExprListSyntax(formatChildrenSeparatedByNewline(children: children))
+        } else {
+            return super.visit(node)
+        }
+    }
+
     // MARK: - Private helpers
 
     private func shouldBeSeparatedByTwoNewlines(node: CodeBlockItemSyntax) -> Bool {
@@ -74,17 +83,19 @@ public class CodeGenerationFormat: BasicFormat {
 
     private func formatChildrenSeparatedByNewline<SyntaxType: SyntaxProtocol>(children: SyntaxChildren) -> [SyntaxType] {
         var formattedChildren = children.map {
-            self.rewrite($0).as(SyntaxType.self)!
+            self.rewrite($0).trimmed.as(SyntaxType.self)!
         }
         formattedChildren = formattedChildren.map {
-            if $0.leadingTrivia.first?.isNewline == true {
-                return $0
-            } else {
-                return $0.with(\.leadingTrivia, .newline + currentIndentationLevel + $0.leadingTrivia)
-            }
+            $0.with(\.leadingTrivia, .newline + currentIndentationLevel + $0.leadingTrivia)
         }
-        if let lastChild = formattedChildren.popLast() {
-            formattedChildren.append(lastChild.with(\.trailingTrivia, .newline + .init(pieces: currentIndentationLevel.dropLast())))
+        if let lastChild = formattedChildren.last,
+           let closingToken = lastChild.parent?.nextToken(viewMode: .sourceAccurate),
+           !closingToken.leadingTrivia.contains(where: \.isNewline)
+        {
+            formattedChildren.removeLast()
+            formattedChildren.append(
+                lastChild.with(\.trailingTrivia, .newline + .init(pieces: currentIndentationLevel.dropLast()))
+            )
         }
         return formattedChildren
     }
