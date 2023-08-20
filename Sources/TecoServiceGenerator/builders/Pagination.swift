@@ -108,15 +108,15 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
 
 private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {
     // See if there's indicator for more result.
-    if let (key, metadata) = output.getFieldExactly({ $0.name.hasPrefix("HasNext") }) {
+    if let (key, metadata) = output.getFieldExactly(predicate: { $0.name.hasPrefix("HasNext") }) {
         precondition(metadata.optional == false && metadata.type == .bool)
         return ExprSyntax("response.\(raw: key)")
     }
-    if let (key, metadata) = output.getFieldExactly({ $0.name == "HasMore" }) {
+    if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HasMore" }) {
         precondition(metadata.type == .int)
         return ExprSyntax("response.\(raw: key) == 1")
     }
-    if let (key, metadata) = output.getFieldExactly({ $0.name == "HaveMore" }) {
+    if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HaveMore" }) {
         precondition(metadata.optional == false)
         switch metadata.type {
         case .int:
