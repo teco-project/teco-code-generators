@@ -53,7 +53,7 @@ func getTotalCountField(for output: APIObject, associative: Bool = false) -> API
             if let model = ServiceContext.objects[field.metadata.member],
                let count = getTotalCountField(for: model, associative: false)
             {
-                return ("\(field.key)\(field.metadata.optional ? "?" : "").\(count.key)", count.metadata)
+                return ("\(field.key).\(count.key)", count.metadata)
             }
         }
     }
@@ -118,10 +118,11 @@ func computePaginationKind(input: APIObject, output: APIObject, service: APIMode
 
 func nonOptionalIntegerValue(for field: APIObject.Field, prefix: String = "") -> String {
     precondition(field.metadata.type == .int)
+    let key = removingOptionalAccess(from: field.key)
     if field.metadata.optional {
-        return "(\(prefix)\(field.key) ?? 0)"
+        return "(\(prefix)\(key) ?? 0)"
     } else {
-        return "\(prefix)\(field.key)"
+        return "\(prefix)\(key)"
     }
 }
 
@@ -134,7 +135,7 @@ extension APIObject {
             var members = self.members
             members.removeAll(where: { $0.name == "RequestId" })
             if members.count == 1, members[0].type == .object, let model = ServiceContext.objects[members[0].member] {
-                return (model.members, "\(members[0].identifier)\(members[0].optional ? "?" : "")")
+                return (model.members, "\(members[0].memberIdentifier)\(members[0].optional ? "?" : "")")
             } else {
                 return (members, nil)
             }
@@ -144,11 +145,12 @@ extension APIObject {
         guard filtered.count == 1, let field = filtered.first else {
             return nil
         }
+        let member = "\(field.memberIdentifier)\(field.optional ? "?" : "")"
         // If the result is nested, add the prefix accordingly.
         if let prefix {
-            return ("\(prefix).\(field.memberIdentifier)", field)
+            return ("\(prefix).\(member)", field)
         } else {
-            return (field.escapedIdentifier, field)
+            return (member, field)
         }
     }
 }

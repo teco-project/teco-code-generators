@@ -7,9 +7,6 @@ enum ServiceContext {
 }
 
 func identifierFromEscaped(_ identifier: String) -> String {
-    guard !identifier.hasSuffix("?") else {
-        return identifierFromEscaped(.init(identifier.dropLast()))
-    }
     let escapedIdentifierRegex = Regex {
         "`"
         Capture {
@@ -17,11 +14,16 @@ func identifierFromEscaped(_ identifier: String) -> String {
         }
         "`"
     }
+    let identifier = removingOptionalAccess(from: identifier)
     if let match = identifier.wholeMatch(of: escapedIdentifierRegex) {
         return String(match.1)
     } else {
         return identifier
     }
+}
+
+func removingOptionalAccess(from expression: String) -> String {
+    expression.hasSuffix("?") ? .init(expression.dropLast()) : expression
 }
 
 func removingParens(from expression: String) -> String {
@@ -41,7 +43,7 @@ func removingParens(from expression: String) -> String {
     }
 }
 
-func replacingOptionalKeyPath(_ keyPath: String, in value: String, with concreteValue: String?) -> String {
+func replacingOptionalKeyPath(_ keyPath: String, in value: String, with concreteValue: String?, forceUnwrap: Bool) -> String {
     let optionalAccessRegex = Regex {
         "("
         keyPath
@@ -57,7 +59,7 @@ func replacingOptionalKeyPath(_ keyPath: String, in value: String, with concrete
     }
     return value.replacing(optionalAccessRegex) { match in
         if let concreteValue {
-            return match.1.contains("?") ? "(\(concreteValue).\(match.1) ?? \(match.2))" : "\(concreteValue).\(match.1)"
+            return forceUnwrap || match.1.contains("?") ? "(\(concreteValue).\(match.1) ?? \(match.2))" : "\(concreteValue).\(match.1)"
         } else {
             return "\(match.2)"
         }

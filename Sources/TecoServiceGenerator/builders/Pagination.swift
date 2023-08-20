@@ -1,13 +1,14 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 @_implementationOnly import OrderedCollections
+@_implementationOnly import RegexBuilder
 
 func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
     let memberType = getSwiftMemberType(for: field.metadata)
     return DeclSyntax("""
         /// Extract the returned ``\(raw: memberType)`` list from the paginated response.
         public func getItems() -> [\(raw: memberType)] {
-            self.\(raw: field.key)\(raw: field.metadata.optional || field.key.contains("?") ? " ?? []" : "")
+            self.\(raw: removingOptionalAccess(from: field.key))\(raw: field.key.contains("?") ? " ?? []" : "")
         }
         """)
 }
@@ -16,7 +17,7 @@ func buildGetTotalCountDecl(with field: APIObject.Field) -> DeclSyntax {
     DeclSyntax("""
         /// Extract the total count from the paginated response.
         public func getTotalCount() -> \(raw: getSwiftType(for: field.metadata, forceOptional: true)) {
-            self.\(raw: field.key)
+            self.\(raw: removingOptionalAccess(from: field.key))
         }
         """)
 }
@@ -34,16 +35,25 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
 }
 
 private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.Member], prefix: String = "self") -> ExprSyntax {
-    func buildInputExpr(for members: [APIObject.Member], updating keyPath: some Collection<String>, to value: String, defaultValue: String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
-        // Key path shouldn't be empty.
-        guard let nestedIdentifier = keyPath.first else {
-            fatalError("'keyPath' must not be empty.")
+    func buildInputExpr(for members: [APIObject.Member], updating keyPath: String, to value: String, defaultValue: String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
+        precondition(keyPath.isEmpty == false, "'keyPath' must not be empty.")
+        // Regex for getting top-level member access.
+        let memberAccessRegex = Regex {
+            Capture {
+                OneOrMore(.any, .reluctant)
+            }
+            "."
+            Capture {
+                OneOrMore(.any)
+            }
         }
         // Get input member list.
         let members = members.filter({ !$0.disabled && $0.type != .binary })
         var parameters = OrderedDictionary(excludeOthers ? [] : members.map({ ($0.identifier, "\(prefix).\($0.memberIdentifier)") }), uniquingKeysWith: { $1 })
-        let identifier = identifierFromEscaped(nestedIdentifier)
-        if case let nestedKeyPath = keyPath.dropFirst(), !nestedKeyPath.isEmpty {
+        // Check if the key path is nested.
+        if let match = keyPath.wholeMatch(of: memberAccessRegex) {
+            let (nestedIdentifier, nestedKeyPath) = (String(match.1), String(match.2))
+            let identifier = identifierFromEscaped(nestedIdentifier)
             // Deep into nested objects.
             guard let member = members.first(where: { $0.identifier == identifier }),
                   member.type == .object,
@@ -55,7 +65,7 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
             // Handle optional cases.
             if nestedIdentifier.hasSuffix("?") {
                 let escapedIdentifier = identifier.swiftIdentifierEscaped()
-                let updatedValue = replacingOptionalKeyPath(nestedPrefix, in: value, with: escapedIdentifier)
+                let updatedValue = replacingOptionalKeyPath(nestedPrefix, in: value, with: escapedIdentifier, forceUnwrap: nestedKeyPath.hasSuffix("?"))
                 parameters[identifier] = """
                     {
                         if let \(escapedIdentifier) = \(prefix).\(identifier.swiftMemberEscaped()) {
@@ -70,7 +80,7 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
             }
         } else {
             // Handle unnested input normally.
-            parameters[identifier] = value
+            parameters[identifierFromEscaped(keyPath)] = value
         }
         // Build the initializer call syntax.
         return FunctionCallExprSyntax(callee: ExprSyntax(".init")) {
@@ -80,17 +90,17 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
         }
     }
     // Compute input key paths.
-    let inputKeyPath: [String] = {
+    let inputKeyPath: String = {
         switch pagination {
         case .token(let input, _), .offset(let input, _), .paged(let input):
-            return input.key.split(separator: ".").map(String.init)
+            return input.key
         }
     }()
     // Compute updated value.
     let (buildUpdatedValue, defaultValue): ((String) -> String, String) = {
         switch pagination {
         case .token(_, let output):
-            return ({ $0 }, "response.\(output.key)")
+            return ({ $0 }, "response.\(removingOptionalAccess(from: output.key))")
         case .offset(let input, let output):
             let expr = nonOptionalIntegerValue(for: input, prefix: "self.")
             if let output {
@@ -114,7 +124,7 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
     }
     if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HasMore" }) {
         precondition(metadata.type == .int)
-        return ExprSyntax("response.\(raw: key) == 1")
+        return ExprSyntax("response.\(raw: removingOptionalAccess(from: key)) == 1")
     }
     if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HaveMore" }) {
         precondition(metadata.optional == false)
@@ -124,12 +134,12 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
         case .bool:
             return ExprSyntax("response.\(raw: key)")
         default:
-            fatalError("Unsupported type \(getSwiftType(for: metadata)) for key 'HaveMore'")
+            fatalError("Unsupported type '\(getSwiftType(for: metadata))' for key 'HaveMore'")
         }
     }
     // See if there's token fot the next page.
     if case .token(_, let output) = pagination, output.metadata.nullable {
-        return ExprSyntax("response.\(raw: output.key) != nil")
+        return ExprSyntax("response.\(raw: removingOptionalAccess(from: output.key)) != nil")
     }
     // If there's no indicator, judge by list empty.
     return ExprSyntax("!response.getItems().isEmpty")
