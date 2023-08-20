@@ -35,7 +35,7 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
 }
 
 private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.Member], prefix: String = "self") -> ExprSyntax {
-    func buildInputExpr(for members: [APIObject.Member], updating keyPath: String, to value: String, defaultValue: String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
+    func buildInputExpr(for members: [APIObject.Member], updating keyPath: String, defaultValue: String, updatedValueBuilder: (String, String) -> String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
         precondition(keyPath.isEmpty == false, "'keyPath' must not be empty.")
         // Regex for getting top-level member access.
         let memberAccessRegex = Regex {
@@ -65,22 +65,21 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
             // Handle optional cases.
             if nestedIdentifier.hasSuffix("?") {
                 let escapedIdentifier = identifier.swiftIdentifierEscaped()
-                let updatedValue = replacingOptionalKeyPath(nestedPrefix, in: value, with: escapedIdentifier, forceUnwrap: nestedKeyPath.hasSuffix("?"))
                 parameters[identifier] = """
                     {
                         if let \(escapedIdentifier) = \(prefix).\(identifier.swiftMemberEscaped()) {
-                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, to: updatedValue, defaultValue: defaultValue, prefix: escapedIdentifier).formatted())
+                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, defaultValue: defaultValue, updatedValueBuilder: updatedValueBuilder, prefix: escapedIdentifier).formatted())
                         } else {
-                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, to: defaultValue, defaultValue: defaultValue, prefix: nestedPrefix, excludeOthers: true).formatted())
+                            return \(buildInputExpr(for: object.members, updating: nestedKeyPath, defaultValue: defaultValue, updatedValueBuilder: { removingParens(from: $1) }, prefix: nestedPrefix, excludeOthers: true).formatted())
                         }
                     }()
                     """
             } else {
-                parameters[identifier] = buildInputExpr(for: object.members, updating: nestedKeyPath, to: value,  defaultValue: defaultValue, prefix: nestedPrefix).formatted().description
+                parameters[identifier] = buildInputExpr(for: object.members, updating: nestedKeyPath, defaultValue: defaultValue, updatedValueBuilder: updatedValueBuilder, prefix: nestedPrefix).formatted().description
             }
         } else {
-            // Handle unnested input normally.
-            parameters[identifierFromEscaped(keyPath)] = value
+            // Build and update input value field.
+            parameters[identifierFromEscaped(keyPath)] = updatedValueBuilder("\(prefix).\(keyPath)", defaultValue)
         }
         // Build the initializer call syntax.
         return FunctionCallExprSyntax(callee: ExprSyntax(".init")) {
@@ -97,23 +96,28 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
         }
     }()
     // Compute updated value.
-    let (buildUpdatedValue, defaultValue): ((String) -> String, String) = {
+    let (buildUpdatedValue, defaultValue): ((String, String) -> String, String) = {
         switch pagination {
         case .token(_, let output):
-            return ({ $0 }, "response.\(removingOptionalAccess(from: output.key))")
+            return ({ $1 }, "response.\(removingOptionalAccess(from: output.key))")
         case .offset(let input, let output):
-            let expr = nonOptionalIntegerValue(for: input, prefix: "self.")
+            precondition(input.metadata.type == .int)
+            let builder: (String, String) -> String = {
+                "\(nonOptionalValue(for: $0, default: "0")) + \($1)"
+            }
             if let output {
-                return ({ "\(expr) + \($0)" }, nonOptionalIntegerValue(for: output, prefix: "response."))
+                precondition(output.metadata.type == .int)
+                return (builder, nonOptionalValue(for: "response.\(output.key)", default: "0"))
             } else {
-                return ({ "\(expr) + \($0)" }, ".init(response.getItems().count)")
+                return (builder, ".init(response.getItems().count)")
             }
         case .paged(let input):
-            return ({ "\(nonOptionalIntegerValue(for: input, prefix: "self.")) + \($0)" }, "1")
+            precondition(input.metadata.type == .int)
+            return ({ "\(nonOptionalValue(for: $0, default: "0")) + \($1)" }, "1")
         }
     }()
     // Build the initializer call syntax.
-    return buildInputExpr(for: members, updating: inputKeyPath, to: buildUpdatedValue(defaultValue), defaultValue: removingParens(from: defaultValue)).as(ExprSyntax.self)!
+    return buildInputExpr(for: members, updating: inputKeyPath, defaultValue: defaultValue, updatedValueBuilder: buildUpdatedValue).as(ExprSyntax.self)!
 }
 
 private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {

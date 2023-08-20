@@ -116,13 +116,14 @@ func computePaginationKind(input: APIObject, output: APIObject, service: APIMode
     return nil
 }
 
-func nonOptionalIntegerValue(for field: APIObject.Field, prefix: String = "") -> String {
-    precondition(field.metadata.type == .int)
-    let key = removingOptionalAccess(from: field.key)
-    if field.metadata.optional {
-        return "(\(prefix)\(key) ?? 0)"
+func nonOptionalValue(for keyPath: String, default: String? = nil) -> String {
+    if keyPath.contains("?") {
+        guard let `default` else {
+            preconditionFailure("Unspecified default value for optional key path '\(keyPath)'")
+        }
+        return "(\(removingOptionalAccess(from: keyPath)) ?? \(`default`))"
     } else {
-        return "\(prefix)\(key)"
+        return keyPath
     }
 }
 
