@@ -556,7 +556,10 @@ func formatDocumentation(_ documentation: String?) -> String? {
             One(.newlineSequence)
             ">"
             ZeroOrMore(.whitespace, .reluctant)
-            One(.newlineSequence)
+            ChoiceOf {
+                One(.newlineSequence)
+                Anchor.endOfSubject
+            }
         }
         let documentationCopy = documentation
         documentation.replace(unwantedAngleRegex) { match in
