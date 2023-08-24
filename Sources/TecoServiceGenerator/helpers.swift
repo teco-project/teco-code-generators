@@ -550,7 +550,28 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
-    // Convert <dx-alert> to DocC block
+    // Remove extra "\n>\n" sequence
+    do {
+        let unwantedAngleRegex = Regex {
+            One(.newlineSequence)
+            ">"
+            ZeroOrMore(.whitespace, .reluctant)
+            One(.newlineSequence)
+        }
+        let documentationCopy = documentation
+        documentation.replace(unwantedAngleRegex) { match in
+            guard match.endIndex < documentationCopy.endIndex, documentationCopy[match.endIndex] == ">" else {
+                if documentationCopy[documentationCopy.index(before: match.startIndex)].isNewline {
+                    return ""
+                } else {
+                    return "\n"
+                }
+            }
+            return .init(match.output)
+        }
+    }
+
+    // Convert <dx-alert> to DocC aside
     do {
         let dxAlertTagRegex = Regex {
             htmlOpeningTagCapturingAttributesRegex(for: "dx-alert")
@@ -559,7 +580,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             }
             htmlClosingTagRegex(for: "dx-alert")
         }
-        let twoOrMoreNewlinesRegex = Repeat(2...) {
+        let threeOrMoreNewlinesRegex = Repeat(3...) {
             One(.newlineSequence)
             ZeroOrMore(.whitespace)
         }
@@ -568,7 +589,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             guard !content.isEmpty, let infotype = match.1?.firstMatch(of: htmlAttributeRegex(named: "infotype"))?.1 else {
                 return content
             }
-            // Select DocC block prefix based on infotype
+            // Select DocC aside prefix based on infotype
             let prefix: String
             switch infotype {
             case "notice":
@@ -580,15 +601,15 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 return content
             }
             // Determine if the content can be displayed in a line
-            if content.contains(twoOrMoreNewlinesRegex) {
-                return "\n#### \(prefix)\n\n\(content)\n"
-            } else {
-                return "\n- \(prefix): \(zipMarkdownLine(.init(content)))\n"
-            }
+            let block = content.replacing(threeOrMoreNewlinesRegex, with: "\n\n")
+                .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                .enumerated().map { ($0.0 == 0 ? "> \(prefix): " : "> ") + $0.1 }
+                .joined(separator: "\n")
+            return "\n\(block)\n"
         }
     }
 
-    // Convert `>?` to attention block
+    // Convert `>?` to DocC attention aside
     do {
         let attentionMarkRegex = Regex {
             Optionally(.newlineSequence)
@@ -615,31 +636,10 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 return "\n#### Attention\n"
             }
             guard let contentMatch = try? attentionPrefixRegex.wholeMatch(in: match.1) else {
-                assertionFailure("Unable to extract content in attention block.")
+                assertionFailure("Unable to extract content in attention aside.")
                 return "\(match.1)"
             }
-            return "\n- Attention: \(contentMatch.1)"
-        }
-    }
-
-    // Remove extra "\n>\n" sequence
-    do {
-        let unwantedAngleRegex = Regex {
-            One(.newlineSequence)
-            ">"
-            ZeroOrMore(.whitespace, .reluctant)
-            One(.newlineSequence)
-        }
-        let documentationCopy = documentation
-        documentation.replace(unwantedAngleRegex) { match in
-            guard match.endIndex < documentationCopy.endIndex, documentationCopy[match.endIndex] == ">" else {
-                if documentationCopy[documentationCopy.index(before: match.startIndex)].isNewline {
-                    return ""
-                } else {
-                    return "\n"
-                }
-            }
-            return .init(match.output)
+            return "\n> Attention: \(contentMatch.1)"
         }
     }
 
