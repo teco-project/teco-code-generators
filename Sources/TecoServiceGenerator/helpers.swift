@@ -596,7 +596,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
             let prefix: String
             switch infotype {
             case "notice":
-                prefix = "Attention"
+                prefix = "Important"
             case "explain":
                 prefix = "Note"
             default:
@@ -612,7 +612,7 @@ func formatDocumentation(_ documentation: String?) -> String? {
         }
     }
 
-    // Convert `>?` to DocC attention aside
+    // Convert `>?` to DocC important aside
     do {
         let attentionMarkRegex = Regex {
             Optionally(.newlineSequence)
@@ -639,10 +639,10 @@ func formatDocumentation(_ documentation: String?) -> String? {
                 return "\n#### Attention\n"
             }
             guard let contentMatch = try? attentionPrefixRegex.wholeMatch(in: match.1) else {
-                assertionFailure("Unable to extract content in attention aside.")
+                assertionFailure("Unable to extract content in >? aside.")
                 return "\(match.1)"
             }
-            return "\n> Attention: \(contentMatch.1)"
+            return "\n> Important: \(contentMatch.1)"
         }
     }
 
