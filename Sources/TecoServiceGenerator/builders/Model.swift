@@ -8,16 +8,18 @@ func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in mo
         return nil
     }
     let renamed = functionNameBuilder(members.filter({ !$0.disabled }).map({ "\($0.identifier):" }).joined())
-    let arguments = AvailabilityArgumentListSyntax {
+    let renamedSyntax = SimpleStringLiteralExprSyntax(openingQuote: .stringQuoteToken(), segments: [.init(content: .stringSegment(renamed))], closingQuote: .stringQuoteToken())
+    let messageSyntax = SimpleStringLiteralExprSyntax(openingQuote: .stringQuoteToken(), segments: [.init(content: .stringSegment(message))], closingQuote: .stringQuoteToken())
+    let argumentListSyntax = AvailabilityArgumentListSyntax {
         AvailabilityArgumentSyntax(argument: .token(.binaryOperator("*")))
         AvailabilityArgumentSyntax(argument: .token(.keyword(.deprecated)))
-        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.renamed), value: .string(.init(content: renamed)))))
-        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.message), value: .string(.init(content: message)))))
+        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.renamed), value: .string(renamedSyntax))))
+        AvailabilityArgumentSyntax(argument: .availabilityLabeledArgument(.init(label: .keyword(.message), value: .string(messageSyntax))))
     }
     return AttributeSyntax(
         attributeName: TypeSyntax("available"),
         leftParen: .leftParenToken(),
-        arguments: .availability(arguments),
+        arguments: .availability(argumentListSyntax),
         rightParen: .rightParenToken()
     )
 }
