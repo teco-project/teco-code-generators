@@ -23,7 +23,7 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
 }
 
 private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> ExprSyntax? {
-    metadata.status == .deprecated ? #"fatalError("\#(raw: action) is no longer available.")"# : nil
+    metadata.status == .deprecated ? #"fatalError("'\#(raw: action)' is no longer available.")"# : nil
 }
 
 @LabeledExprListBuilder
