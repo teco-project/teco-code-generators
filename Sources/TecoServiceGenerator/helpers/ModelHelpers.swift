@@ -52,9 +52,6 @@ func getSwiftMemberType(for model: APIObject.Member) -> String {
 }
 
 func publicLetWithWrapper(for member: APIObject.Member, documentation: String = "", computed: Bool = false, deprecated: Bool = false) -> String {
-    guard member.type != .binary else {
-        fatalError("Multipart APIs shouldn't be generated!")
-    }
     var documentation = documentation
     if documentation.last?.isNewline == false {
         documentation += "\n"

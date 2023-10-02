@@ -48,7 +48,7 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
             }
         }
         // Get input member list.
-        let members = members.filter({ !$0.disabled && $0.type != .binary })
+        let members = members.filter({ !$0.disabled })
         var parameters = OrderedDictionary(excludeOthers ? [] : members.map({ ($0.identifier, "\(prefix).\($0.memberIdentifier)") }), uniquingKeysWith: { $1 })
         // Check if the key path is nested.
         if let match = keyPath.wholeMatch(of: memberAccessRegex) {

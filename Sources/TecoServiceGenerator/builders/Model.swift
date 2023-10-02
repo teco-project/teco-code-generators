@@ -65,17 +65,14 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
             return "TCRequest"
         }
     }()
+
     return try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
         public struct \(raw: input): \(raw: requestType)
         """) {
-        let inputMembers = metadata.members.filter({ $0.type != .binary })
-        buildModelMemberList(for: input, usage: .in, members: inputMembers)
-
-        try buildModelInitializerDecls(for: input, members: inputMembers)
-
-        try buildModelCodingKeys(for: inputMembers)
-
+        buildModelMemberList(for: input, usage: .in, members: metadata.members)
+        try buildModelInitializerDecls(for: input, members: metadata.members)
+        try buildModelCodingKeys(for: metadata.members)
         if let pagination {
             try buildMakeNextRequestDecl(for: pagination, input: (input, metadata), output: output)
         }
