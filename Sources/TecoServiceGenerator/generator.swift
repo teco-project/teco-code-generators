@@ -130,7 +130,7 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                     let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
                     let sourceFile = try SourceFileSyntax {
-                        buildTecoCoreImportDecls(for: .action(input: input, output: output, pagination: pagination != nil))
+                        buildTecoCoreImportDecls(for: .action(input: input, output: output))
 
                         let inputMembers = input.members.filter({ $0.type != .binary })
                         let discardableOutput = output.type == .object && output.members.count == 1

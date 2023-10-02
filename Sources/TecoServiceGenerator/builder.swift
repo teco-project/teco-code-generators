@@ -4,7 +4,7 @@ import TecoCodeGeneratorCommons
 
 enum ImportContext {
     case client
-    case action(input: APIObject, output: APIObject, pagination: Bool)
+    case action(input: APIObject, output: APIObject)
     case models(any Collection<APIObject>)
     case error
     case exports(any Collection<APIObject>)
@@ -13,7 +13,7 @@ enum ImportContext {
 func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSyntax {
     let date = {
         let members: [APIObject.Member]
-        if case .action(let input, let output, _) = context {
+        if case .action(let input, let output) = context {
             members = input.members + output.members
         } else if case .models(let models) = context {
             members = models.flatMap(\.members)
@@ -46,7 +46,7 @@ func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSy
             if date {
                 DeclSyntax("import TecoDateHelpers")
             }
-        case .action(_, _, let pagination):
+        case .action:
             if date {
                 DeclSyntax("import struct Foundation.Date")
             }
@@ -55,9 +55,6 @@ func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSy
             DeclSyntax("import TecoCore")
             if date {
                 DeclSyntax("import TecoDateHelpers")
-            }
-            if pagination {
-                DeclSyntax("import TecoPaginationHelpers")
             }
         }
     }
