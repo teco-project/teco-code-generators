@@ -122,28 +122,20 @@ struct TecoServiceGenerator: TecoCodeGenerator {
                         fatalError("broken API metadata")
                     }
 
-                    // Skip Multipart-only API
-                    if !input.members.isEmpty, input.members.allSatisfy({ $0.type == .binary }) {
-                        continue
-                    }
-
                     let pagination = computePaginationKind(input: input, output: output, service: service, action: metadata)
 
                     let sourceFile = try SourceFileSyntax {
                         buildTecoCoreImportDecls(for: .action(input: input, output: output))
 
-                        let inputMembers = input.members.filter({ $0.type != .binary })
-                        let discardableOutput = output.type == .object && output.members.count == 1
-
                         try ExtensionDeclSyntax("extension \(raw: serviceName)") {
                             try buildRequestModelDecl(for: metadata.input, metadata: input, pagination: pagination, output: (metadata.output, output))
                             try buildResponseModelDecl(for: metadata.output, metadata: output, wrapped: output.usage != nil, paginated: pagination != nil)
 
-                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput)
-                            try buildActionDecl(for: action, metadata: metadata, discardable: discardableOutput, async: true)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: output.discardable)
+                            try buildActionDecl(for: action, metadata: metadata, discardable: output.discardable, async: true)
 
-                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput)
-                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: inputMembers, discardable: discardableOutput, async: true)
+                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: input.members, discardable: output.discardable)
+                            try buildUnpackedActionDecls(for: action, metadata: metadata, unpacking: input.members, discardable: output.discardable, async: true)
 
                             if pagination != nil {
                                 try buildPaginatedActionDecl(for: action, metadata: metadata, output: output)

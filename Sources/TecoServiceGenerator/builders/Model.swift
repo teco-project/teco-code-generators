@@ -55,9 +55,19 @@ func buildInitializerParameterList(for members: [APIObject.Member], includeDepre
 }
 
 func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) throws -> StructDeclSyntax {
-    try StructDeclSyntax("""
+    let requestType = {
+        if metadata.members.contains(where: { $0.type == .binary }) {
+            precondition(pagination == nil, "Pagination support isn't implemented for Multipart requests.")
+            return "TCMultipartRequest"
+        } else if pagination != nil {
+            return "TCPaginatedRequest"
+        } else {
+            return "TCRequest"
+        }
+    }()
+    return try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
-        public struct \(raw: input): \(raw: pagination != nil ? "TCPaginatedRequest" : "TCRequest")
+        public struct \(raw: input): \(raw: requestType)
         """) {
         let inputMembers = metadata.members.filter({ $0.type != .binary })
         buildModelMemberList(for: input, usage: .in, members: inputMembers)

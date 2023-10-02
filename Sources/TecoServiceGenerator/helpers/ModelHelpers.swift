@@ -113,6 +113,9 @@ extension APIObject {
             return ["TCInputModel", "TCOutputModel"]
         }
     }
+    var discardable: Bool {
+        type == .object && members.count == 1
+    }
 }
 
 extension APIObject.Member {
