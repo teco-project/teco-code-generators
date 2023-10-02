@@ -83,19 +83,20 @@ func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: P
 func buildModelMemberList(for model: String, usage: APIObject.Usage?, members: [APIObject.Member], documentation: Bool = true, wrappedResponse: Bool = false) -> MemberBlockItemListSyntax {
     for member in members {
         let accessor = wrappedResponse ? AccessorBlockSyntax(accessors: .getter("self.data.\(raw: member.identifier)")) : nil
-        let initializer: InitializerClauseSyntax? = {
+        let (type, initializer): (TypeSyntax, InitializerClauseSyntax?) = {
+            let typeName = getSwiftType(for: member)
             guard usage != .out, member.disabled else {
-                return nil
+                return ("\(raw: typeName)", nil)
             }
             guard let defaultValue = buildDefaultArgument(for: member) else {
-                fatalError("Disabled member '\(member.identifier)' must have default value.")
+                return ("\(raw: typeName)?", .init(value: NilLiteralExprSyntax()))
             }
-            return .init(value: defaultValue)
+            return ("\(raw: typeName)", .init(value: defaultValue))
         }()
 
         let binding = PatternBindingSyntax(
             pattern: PatternSyntax("\(raw: member.escapedIdentifier)"),
-            typeAnnotation: .init(type: TypeSyntax("\(raw: getSwiftType(for: member))")),
+            typeAnnotation: .init(type: type),
             initializer: initializer,
             accessorBlock: accessor
         )
