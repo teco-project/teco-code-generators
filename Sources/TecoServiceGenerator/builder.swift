@@ -11,27 +11,33 @@ enum ImportContext {
 }
 
 func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSyntax {
-    let date = {
-        let members: [APIObject.Member]
+    let members = {
         if case .action(let input, let output) = context {
-            members = input.members + output.members
+            return input.members + output.members
         } else if case .models(let models) = context {
-            members = models.flatMap(\.members)
+            return models.flatMap(\.members)
         } else if case .exports(let models) = context {
-            members = models.flatMap(\.members)
+            return models.flatMap(\.members)
         } else {
-            return false
+            return []
         }
-        return members.contains(where: { $0.dateType != nil })
     }()
+    let data = members.contains(where: { $0.type == .binary })
+    let date = members.contains(where: { $0.dateType != nil })
 
     return CodeBlockItemListSyntax {
         switch context {
         case .exports:
             DeclSyntax("@_exported import TecoCore")
-            if date {
-                DeclSyntax("@_exported import struct Foundation.Date")
-                    .with(\.leadingTrivia, .newlines(2))
+            if data || date {
+                CodeBlockItemListSyntax {
+                    if data {
+                        DeclSyntax("@_exported import struct Foundation.Data")
+                    }
+                    if date {
+                        DeclSyntax("@_exported import struct Foundation.Date")
+                    }
+                }.with(\.leadingTrivia, .newlines(2))
             }
         case .error:
             DeclSyntax("import TecoCore")
@@ -39,6 +45,9 @@ func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSy
             DeclSyntax("import NIOCore")
             DeclSyntax("import TecoCore")
         case .models:
+            if data {
+                DeclSyntax("import struct Foundation.Data")
+            }
             if date {
                 DeclSyntax("import struct Foundation.Date")
             }
@@ -47,6 +56,9 @@ func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSy
                 DeclSyntax("import TecoDateHelpers")
             }
         case .action:
+            if data {
+                DeclSyntax("import struct Foundation.Data")
+            }
             if date {
                 DeclSyntax("import struct Foundation.Date")
             }
