@@ -17,7 +17,7 @@ struct TecoPackageGenerator: TecoCodeGenerator {
     var serviceGenerator: URL?
 
     @Option(name: .long, transform: parseLabeledExprSyntax)
-    var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.3")"#))
+    var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.5")"#))
 
     @Flag
     var dryRun: Bool = false
