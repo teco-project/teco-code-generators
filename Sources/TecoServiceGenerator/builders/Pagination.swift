@@ -27,10 +27,10 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
         /// Compute the next request based on API response.
         public func makeNextRequest(with response: \(raw: output.name)) -> \(raw: input.name)?
         """) {
-        try GuardStmtSyntax("guard \(buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) else") {
-            StmtSyntax("return nil")
+        GuardStmtSyntax(conditions: buildHasMoreResultExpr(for: output.metadata, pagination: pagination)) {
+            ReturnStmtSyntax(expression: NilLiteralExprSyntax())
         }
-        StmtSyntax("return \(buildNextInputExpr(for: pagination, members: input.metadata.members))")
+        ReturnStmtSyntax(expression: buildNextInputExpr(for: pagination, members: input.metadata.members))
     }.as(DeclSyntax.self)!
 }
 
@@ -120,31 +120,31 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
     return buildInputExpr(for: members, updating: inputKeyPath, defaultValue: defaultValue, updatedValueBuilder: buildUpdatedValue).as(ExprSyntax.self)!
 }
 
-private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ExprSyntax {
+private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ConditionElementListSyntax {
     // See if there's indicator for more result.
     if let (key, metadata) = output.getFieldExactly(predicate: { $0.name.hasPrefix("HasNext") }) {
         precondition(metadata.optional == false && metadata.type == .bool)
-        return ExprSyntax("response.\(raw: key)")
+        return [.init(condition: .expression("response.\(raw: key)"))]
     }
     if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HasMore" }) {
         precondition(metadata.type == .int)
-        return ExprSyntax("response.\(raw: removingOptionalAccess(from: key)) == 1")
+        return [.init(condition: .expression("response.\(raw: removingOptionalAccess(from: key)) == 1"))]
     }
     if let (key, metadata) = output.getFieldExactly(predicate: { $0.name == "HaveMore" }) {
         precondition(metadata.optional == false)
         switch metadata.type {
         case .int:
-            return ExprSyntax("response.\(raw: key) > 0")
+            return [.init(condition: .expression("response.\(raw: key) > 0"))]
         case .bool:
-            return ExprSyntax("response.\(raw: key)")
+            return [.init(condition: .expression("response.\(raw: key)"))]
         default:
             fatalError("Unsupported type '\(getSwiftType(for: metadata))' for key 'HaveMore'")
         }
     }
     // See if there's token fot the next page.
     if case .token(_, let output) = pagination, output.metadata.nullable {
-        return ExprSyntax("response.\(raw: removingOptionalAccess(from: output.key)) != nil")
+        return [.init(condition: .expression("response.\(raw: removingOptionalAccess(from: output.key)) != nil"))]
     }
     // If there's no indicator, judge by list empty.
-    return ExprSyntax("!response.getItems().isEmpty")
+    return [.init(condition: .expression("!response.getItems().isEmpty"))]
 }
