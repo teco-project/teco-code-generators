@@ -145,6 +145,33 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
     if case .token(_, let output) = pagination, output.metadata.nullable {
         return [.init(condition: .expression("response.\(raw: removingOptionalAccess(from: output.key)) != nil"))]
     }
+    // If it's based on offset, judge if the new list is
+    if case .offset(let input, _) = pagination,
+       case let totalCountType = removingOptionalAccess(from: output.totalCountType),
+       totalCountType != "Never"
+    {
+        // build input offset expression step by step
+        var inputOffset = ExprSyntax("self.\(raw: removingOptionalAccess(from: input.key))")
+        if input.key.contains("?") {
+            inputOffset = "(\(inputOffset) ?? 0)"
+        }
+        if totalCountType != getSwiftType(for: input.metadata) {
+            inputOffset = ".init(\(raw: removingParens(from: "\(inputOffset.formatted())")))"
+        }
+        // build output item count expression step by step
+        var outputItemCount = ExprSyntax("response.getItems().count")
+        if totalCountType != "Int" {
+            outputItemCount = ".init(\(outputItemCount))"
+        }
+        return [
+            .init(condition: .optionalBinding(.init(
+                    bindingSpecifier: .keyword(.let),
+                    pattern: PatternSyntax("totalCount"),
+                    initializer: .init(value: ExprSyntax("response.getTotalCount()")))),
+                  trailingComma: .commaToken()),
+            .init(condition: .expression("\(inputOffset) + \(outputItemCount) == totalCount")),
+        ]
+    }
     // If there's no indicator, judge by list empty.
     return [.init(condition: .expression("!response.getItems().isEmpty"))]
 }
