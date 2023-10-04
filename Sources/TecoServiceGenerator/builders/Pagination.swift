@@ -141,11 +141,11 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
             fatalError("Unsupported type '\(getSwiftType(for: metadata))' for key 'HaveMore'")
         }
     }
-    // See if there's token fot the next page.
+    // See if there's token for the next page.
     if case .token(_, let output) = pagination, output.metadata.nullable {
         return [.init(condition: .expression("response.\(raw: removingOptionalAccess(from: output.key)) != nil"))]
     }
-    // If it's based on offset, judge if the new list is
+    // See if overall offset has reached total count.
     if case .offset(let input, _) = pagination,
        case let totalCountType = removingOptionalAccess(from: output.totalCountType),
        totalCountType != "Never"
@@ -164,6 +164,7 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
             outputItemCount = ".init(\(outputItemCount))"
         }
         return [
+            // case let items = response.getItems
             .init(condition: .matchingPattern(.init(
                     pattern: ValueBindingPatternSyntax(
                         bindingSpecifier: .keyword(.let),
@@ -171,13 +172,16 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
                     ),
                     initializer: .init(value: ExprSyntax("response.getItems()")))),
                   trailingComma: .commaToken()),
+            // !items.isEmpty
             .init(condition: .expression("!items.isEmpty"),
                   trailingComma: .commaToken()),
+            // let totalCount = response.getTotalCount()
             .init(condition: .optionalBinding(.init(
                     bindingSpecifier: .keyword(.let),
                     pattern: PatternSyntax("totalCount"),
                     initializer: .init(value: ExprSyntax("response.getTotalCount()")))),
                   trailingComma: .commaToken()),
+            // self.offset + .init(items.count) >= totalCount
             .init(condition: .expression("\(inputOffset) + \(outputItemCount) >= totalCount")),
         ]
     }
