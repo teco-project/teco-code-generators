@@ -155,21 +155,30 @@ private func buildHasMoreResultExpr(for output: APIObject, pagination: Paginatio
         if input.key.contains("?") {
             inputOffset = "(\(inputOffset) ?? 0)"
         }
-        if totalCountType != getSwiftType(for: input.metadata) {
+        if totalCountType != getSwiftMemberType(for: input.metadata) {
             inputOffset = ".init(\(raw: removingParens(from: "\(inputOffset.formatted())")))"
         }
         // build output item count expression step by step
-        var outputItemCount = ExprSyntax("response.getItems().count")
+        var outputItemCount = ExprSyntax("items.count")
         if totalCountType != "Int" {
             outputItemCount = ".init(\(outputItemCount))"
         }
         return [
+            .init(condition: .matchingPattern(.init(
+                    pattern: ValueBindingPatternSyntax(
+                        bindingSpecifier: .keyword(.let),
+                        pattern: PatternSyntax("items")
+                    ),
+                    initializer: .init(value: ExprSyntax("response.getItems()")))),
+                  trailingComma: .commaToken()),
+            .init(condition: .expression("!items.isEmpty"),
+                  trailingComma: .commaToken()),
             .init(condition: .optionalBinding(.init(
                     bindingSpecifier: .keyword(.let),
                     pattern: PatternSyntax("totalCount"),
                     initializer: .init(value: ExprSyntax("response.getTotalCount()")))),
                   trailingComma: .commaToken()),
-            .init(condition: .expression("\(inputOffset) + \(outputItemCount) == totalCount")),
+            .init(condition: .expression("\(inputOffset) + \(outputItemCount) >= totalCount")),
         ]
     }
     // If there's no indicator, judge by list empty.
