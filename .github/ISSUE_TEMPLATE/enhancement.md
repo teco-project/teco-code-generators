@@ -1,6 +1,6 @@
 ---
 name: Enhancement
-about: Propose an idea to help improve the project
+about: Propose an idea to help improve the project.
 title: ''
 labels: enhancement
 assignees: stevapple
