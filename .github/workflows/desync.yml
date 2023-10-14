@@ -1,0 +1,86 @@
+name: De-sync
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+concurrency: codegen-sync-${{ github.event.number }}
+
+env:
+  TECO_BRANCH: codegen-pr-${{ github.event.number }}
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged }}
+    strategy:
+      matrix:
+        repo:
+          - teco
+          - teco-core
+    steps:
+      - name: TODO
+        run: echo "Hello world!" > /dev/null
+  delete-branch:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.merged }}
+    strategy:
+      matrix:
+        repo:
+          - teco
+          - teco-core
+    steps:
+      - name: Generate app token for bot
+        uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          private_key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+      - name: Delete branch protection rule
+        uses: actions/github-script@v6
+        env:
+          TECO_REPO: ${{ matrix.repo }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            github.rest.repos.deleteBranchProtection({
+              owner: context.repo.owner,
+              repo: process.env.TECO_REPO,
+              branch: process.env.TECO_BRANCH
+            });
+      - name: Delete sync branch
+        uses: actions/github-script@v6
+        env:
+          TECO_REPO: ${{ matrix.repo }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: process.env.TECO_REPO,
+              ref: `heads/${process.env.TECO_BRANCH}`
+            });
+  delete-label:
+    runs-on: ubuntu-latest
+    needs:
+      - delete-branch
+    steps:
+      - name: Generate app token for bot
+        uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          private_key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+      - name: Delete "in sync" label
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'in sync'
+            });
