@@ -26,26 +26,29 @@ struct TecoDateWrapperGenerator: TecoCodeGenerator {
 
                     DeclSyntax("""
                         public var projectedValue: StorageValue {
-                            get { self._stringValue }
-                            set { self._stringValue = newValue }
+                            get { self._stringValue.withLockedValue { $0 } }
+                            nonmutating set {
+                                self._stringValue.withLockedValue { $0 = newValue }
+                            }
                         }
                         """)
 
-                    DeclSyntax("private var _dateValue: WrappedValue")
-                    DeclSyntax("private var _stringValue: StorageValue")
+                    DeclSyntax("private let _dateValue: WrappedValue")
+                    DeclSyntax("private let _stringValue: NIOLockedValueBox<StorageValue>")
 
                     DeclSyntax("""
                         public init(wrappedValue: WrappedValue) {
                             self._dateValue = wrappedValue
-                            self._stringValue = wrappedValue.encode(formatter: Self._formatter)
+                            self._stringValue = NIOLockedValueBox(wrappedValue.encode(formatter: Self._formatter))
                         }
                         """)
 
                     DeclSyntax("""
                         public init(from decoder: Decoder) throws {
                             let container = try decoder.singleValueContainer()
-                            self._stringValue = try container.decode(StorageValue.self)
-                            self._dateValue = try WrappedValue.decode(from: self._stringValue, formatter: Self._formatter, container: container, wrapper: Self.self)
+                            let dateString = try container.decode(StorageValue.self)
+                            self._dateValue = try WrappedValue.decode(from: dateString, formatter: Self._formatter, container: container, wrapper: Self.self)
+                            self._stringValue = NIOLockedValueBox(dateString)
                         }
                         """)
                 }

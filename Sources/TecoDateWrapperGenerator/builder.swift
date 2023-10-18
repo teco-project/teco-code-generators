@@ -13,6 +13,7 @@ func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
         DeclSyntax("import struct Foundation.Date")
         DeclSyntax("import class Foundation.ISO8601DateFormatter")
     }
+    DeclSyntax("@_implementationOnly import struct NIOConcurrencyHelpers.NIOLockedValueBox")
 }
 
 func buildDateFormatterDecl(for encoding: DateEncoding) -> DeclSyntax {
