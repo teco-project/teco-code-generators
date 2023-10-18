@@ -24,13 +24,13 @@ func buildDateFormatterDecl(for encoding: DateEncoding) -> DeclSyntax {
         dateFormat = "yyyy-MM-dd HH:mm:ss"
     case .timestamp_iso8601:
         return DeclSyntax("""
-            public static var _formatter: ISO8601DateFormatter {
+            @_spi(_TecoInternals) public static var _formatter: ISO8601DateFormatter {
                 ISO8601DateFormatter()
             }
             """)
     }
     return DeclSyntax("""
-        public static var _formatter: DateFormatter {
+        @_spi(_TecoInternals) public static var _formatter: DateFormatter {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.dateFormat = \(literal: dateFormat)

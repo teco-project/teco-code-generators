@@ -52,7 +52,7 @@ struct TecoDateWrapperGenerator: TecoCodeGenerator {
 
                 try ExtensionDeclSyntax("extension \(raw: encoding.rawValue): TCDateWrapper") {
                     DeclSyntax("""
-                        public static var _valueDescription: String {
+                        @_spi(_TecoInternals) public static var _valueDescription: StaticString {
                             \(literal: encoding.valueDescription)
                         }
                         """)
