@@ -64,8 +64,8 @@ func publicLetWithWrapper(for member: APIObject.Member, documentation: String = 
             documentation += "///\n"
         }
         return """
-            \(documentation)/// While the wrapped date value is immutable just like other fields, you can customize the projected
-            /// string value (through `$`-prefix) in case the synthesized encoding is incorrect.
+            \(documentation)/// While the wrapped date value is immutable just like other fields, you can customize the underlying
+            /// string value (through `$\(member.identifier)`) in case the synthesized encoding is incorrect.
             \(availablility)@\(dateType.propertyWrapper) public var
             """
     } else {
