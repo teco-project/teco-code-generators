@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Submit an issue for Teco
+    url: https://github.com/teco-project/teco/issues/new/choose
+    about: Report a bug or a feature request related to Teco.
