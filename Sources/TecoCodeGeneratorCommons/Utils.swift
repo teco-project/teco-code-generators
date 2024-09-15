@@ -104,19 +104,8 @@ extension SourceFileSyntax {
         // Skip formatting and writing to disk in dry-run mode
         if GeneratorContext.dryRun { return }
 
-        // Work around styling issues regarding blank lines.
-        var sourceCode = source.description.trimmingCharacters(in: .whitespacesAndNewlines).appending("\n")
-
-        // Work around styling issues regarding trailing whitespaces.
-        sourceCode = sourceCode.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map {
-            var line = $0
-            while line.last?.isWhitespace == true {
-                line.removeLast()
-            }
-            return line
-        }.joined(separator: "\n")
-
         // Save to file.
+        let sourceCode = source.description + "\n"
         try sourceCode.write(to: url, atomically: true, encoding: .utf8)
     }
 }
