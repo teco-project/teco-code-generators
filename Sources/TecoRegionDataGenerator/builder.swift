@@ -1,11 +1,14 @@
-import SwiftSyntax
-import SwiftSyntaxBuilder
 #if compiler(>=6.0)
 internal import OrderedCollections
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
 #else
 @_implementationOnly import OrderedCollections
-#endif
+import SwiftSyntax
+import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool = false) -> ArrayElementSyntax {
     precondition(names.isEmpty == false)

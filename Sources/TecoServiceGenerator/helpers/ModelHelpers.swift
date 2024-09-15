@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
+#endif
 
 func getSwiftType(for model: APIObject.Member, isInitializer: Bool = false, forceOptional: Bool = false) -> String {
     var type = getSwiftMemberType(for: model)

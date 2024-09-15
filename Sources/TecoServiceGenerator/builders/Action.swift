@@ -1,6 +1,12 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 private func buildActionAttributeList(for action: APIModel.Action, discardableResult: Bool, additionalAttributes: [AttributeSyntax] = []) -> AttributeListSyntax {
     AttributeListSyntax {

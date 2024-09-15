@@ -1,6 +1,14 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import TecoCodeGeneratorCommons
+internal import class Foundation.JSONDecoder
+internal import struct Foundation.URL
+#else
 import ArgumentParser
 import TecoCodeGeneratorCommons
 import class Foundation.JSONDecoder
+import struct Foundation.URL
+#endif
 
 struct CommonError {
     let code: String

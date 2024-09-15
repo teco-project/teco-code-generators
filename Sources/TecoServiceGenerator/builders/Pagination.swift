@@ -1,11 +1,13 @@
-import SwiftSyntax
-import SwiftSyntaxBuilder
 #if compiler(>=6.0)
 private import OrderedCollections
 private import RegexBuilder
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
 #else
 @_implementationOnly import OrderedCollections
 @_implementationOnly import RegexBuilder
+import SwiftSyntax
+import SwiftSyntaxBuilder
 #endif
 
 func buildGetItemsDecl(with field: APIObject.Field) -> some DeclSyntaxProtocol {

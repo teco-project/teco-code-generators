@@ -1,10 +1,13 @@
+#if compiler(>=6.0)
+internal import OrderedCollections
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
+@_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
-#if compiler(>=6.0)
-internal import OrderedCollections
-#else
-@_implementationOnly import OrderedCollections
 #endif
 
 func buildServiceErrorTypeDecl(_ serviceName: String) throws -> some DeclSyntaxProtocol {

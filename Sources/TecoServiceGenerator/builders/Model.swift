@@ -1,6 +1,12 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in model: String? = nil, functionNameBuilder: @escaping (String) -> String) -> AttributeSyntax? {
     guard case let deprecated = members.filter(\.disabled),

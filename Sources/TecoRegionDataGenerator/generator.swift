@@ -1,25 +1,30 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import struct Foundation.URL
+private import OrderedCollections
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
+@_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
-#if compiler(>=6.0)
-private import OrderedCollections
-#else
-@_implementationOnly import OrderedCollections
-#endif
 import TecoCodeGeneratorCommons
+#endif
 
 @main
 struct TecoRegionDataGenerator: TecoCodeGenerator {
     static let startingYear = 2023
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
-    var output: URL
+    fileprivate var output: URL
 
     @Option(name: .long)
-    var product: String = "vpc"
+    fileprivate var product: String = "vpc"
 
     @Flag
-    var dryRun: Bool = false
+    fileprivate var dryRun: Bool = false
 
     func generate() async throws {
         let client = RegionService()

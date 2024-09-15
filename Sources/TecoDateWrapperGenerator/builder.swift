@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
+#endif
 
 @CodeBlockItemListBuilder
 func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {

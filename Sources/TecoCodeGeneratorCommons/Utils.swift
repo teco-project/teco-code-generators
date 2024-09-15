@@ -1,12 +1,17 @@
-import Foundation
+#if compiler(>=6.0)
+private import ArgumentParser
+public import Foundation
+private import OrderedCollections
+private import SwiftParser
+public import SwiftSyntax
+private import SwiftSyntaxBuilder
+#else
 import ArgumentParser
+import Foundation
+@_implementationOnly import OrderedCollections
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-#if compiler(>=6.0)
-private import OrderedCollections
-#else
-@_implementationOnly import OrderedCollections
 #endif
 
 extension String {

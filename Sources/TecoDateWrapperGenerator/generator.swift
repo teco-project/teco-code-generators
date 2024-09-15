@@ -1,17 +1,26 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import struct Foundation.URL
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
+import struct Foundation.URL
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 @main
 struct TecoDateWrapperGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    var outputDir: URL
+    fileprivate var outputDir: URL
 
     @Flag
-    var dryRun: Bool = false
+    fileprivate var dryRun: Bool = false
 
     func generate() throws {
         for encoding in DateEncoding.all {

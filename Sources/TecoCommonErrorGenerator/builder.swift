@@ -1,6 +1,12 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 func buildCommonErrorStructDecl(from errors: [CommonError]) throws -> some DeclSyntaxProtocol {
     try StructDeclSyntax("""

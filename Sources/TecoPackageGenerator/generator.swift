@@ -1,26 +1,35 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import struct Foundation.URL
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
+import struct Foundation.URL
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 @main
 struct TecoPackageGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    var modelDir: URL
+    fileprivate var modelDir: URL
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    var packageDir: URL
+    fileprivate var packageDir: URL
 
     @Option(name: .long, completion: .file(), transform: URL.init(fileURLWithPath:))
-    var serviceGenerator: URL?
+    fileprivate var serviceGenerator: URL?
 
-    @Option(name: .long, transform: parseLabeledExprSyntax)
-    var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.6")"#))
+    @Option(name: .long, transform: buildRequirementExpr)
+    fileprivate var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.6")"#))
 
     @Flag
-    var dryRun: Bool = false
+    fileprivate var dryRun: Bool = false
 
     func generate() async throws {
         let serviceDirectories = try contentsOfDirectory(at: modelDir.appendingPathComponent("services"), subdirectoryOnly: true)
