@@ -24,7 +24,7 @@ func buildModelMemberDeprecationAttribute(for members: [APIObject.Member], in mo
     )
 }
 
-func buildDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
+func buildDefaultArgument(for member: APIObject.Member) -> (some ExprSyntaxProtocol)? {
     let type = getSwiftType(for: member, isInitializer: true)
     if let defaultValue = member.default, member.required {
         if type == "String" {
@@ -38,9 +38,9 @@ func buildDefaultArgument(for member: APIObject.Member) -> ExprSyntax? {
         }
     }
     if !member.required || !member.outputRequired {
-        return NilLiteralExprSyntax().as(ExprSyntax.self)
+        return ExprSyntax(NilLiteralExprSyntax())
     }
-    return nil
+    return ExprSyntax?.none
 }
 
 @FunctionParameterListBuilder
@@ -54,7 +54,7 @@ func buildInitializerParameterList(for members: [APIObject.Member], includeDepre
     }
 }
 
-func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) throws -> StructDeclSyntax {
+func buildRequestModelDecl(for input: String, metadata: APIObject, pagination: Pagination?, output: (name: String, metadata: APIObject)) throws -> some DeclSyntaxProtocol {
     let requestType = {
         if metadata.members.contains(where: { $0.type == .binary }) {
             precondition(pagination == nil, "Pagination support isn't implemented for Multipart requests.")
@@ -104,7 +104,7 @@ func buildModelMemberList(for model: String, usage: APIObject.Usage?, members: [
     }
 }
 
-func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bool, paginated: Bool) throws -> StructDeclSyntax {
+func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bool, paginated: Bool) throws -> some DeclSyntaxProtocol {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
         public struct \(raw: output): \(raw: paginated ? "TCPaginatedResponse" : "TCResponse")
@@ -146,7 +146,7 @@ func buildResponseModelDecl(for output: String, metadata: APIObject, wrapped: Bo
     }
 }
 
-func buildGeneralModelDecl(for model: String, metadata: APIObject) throws -> StructDeclSyntax {
+func buildGeneralModelDecl(for model: String, metadata: APIObject) throws -> some DeclSyntaxProtocol {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.document))
         public struct \(raw: model): \(raw: metadata.protocols.joined(separator: ", "))
@@ -171,7 +171,7 @@ func buildModelInitializerDecls(for model: String, members: [APIObject.Member]) 
     }
 }
 
-func buildModelInitializerDeclSyntax(for model: String, members: [APIObject.Member], deprecated: Bool = false) throws -> InitializerDeclSyntax {
+func buildModelInitializerDeclSyntax(for model: String, members: [APIObject.Member], deprecated: Bool = false) throws -> some DeclSyntaxProtocol {
     let decl = try InitializerDeclSyntax("public init(\(buildInitializerParameterList(for: members, includeDeprecated: deprecated)))") {
         for member in members where !member.disabled {
             if member.dateType != nil {

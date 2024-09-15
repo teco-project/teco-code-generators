@@ -22,8 +22,14 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
     }
 }
 
-private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> ExprSyntax? {
-    metadata.status == .deprecated ? #"fatalError("'\#(raw: action)' is no longer available.")"# : nil
+private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> (some ExprSyntaxProtocol)? {
+    if metadata.status == .deprecated {
+        FunctionCallExprSyntax(calledExpression: ExprSyntax("fatalError")) {
+            .init(expression: "'\(action)' is no longer available.".makeLiteralSyntax())
+        }
+    } else {
+        nil
+    }
 }
 
 @LabeledExprListBuilder
@@ -55,22 +61,22 @@ private func buildActionSignatureExpr(for action: APIModel.Action, unpacking inp
     let output = output ?? "\(raw: action.output)"
     let returnType: TypeSyntax = hasCallback ? "Void" : output
     let parameters = buildActionParameterList(for: action, unpacking: input, includeDeprecated: includeDeprecated, callbackWith: hasCallback ? output : nil)
-    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsSpecifier: .keyword(.throws)) : nil
+    let effects = async ? FunctionEffectSpecifiersSyntax(asyncSpecifier: .keyword(.async), throwsClause: .init(throwsSpecifier: .keyword(.throws))) : nil
     return FunctionSignatureSyntax(parameterClause: parameters, effectSpecifiers: effects, returnClause: .init(type: async ? returnType : "EventLoopFuture<\(returnType)>"))
         .formatted().as(FunctionSignatureSyntax.self)!
 }
 
-private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> ExprSyntax {
+private func buildExecuteExpr(for action: String, metadata: APIModel.Action, async: Bool = false) -> some ExprSyntaxProtocol {
     let executeExpr = ExprSyntax("self.client.execute(action: \(literal: action), region: region, serviceConfig: self.config\(raw: skipAuthorizationParameter(for: action)), input: input, logger: logger, on: eventLoop)")
     return async ? ExprSyntax("try await \(executeExpr).get()") : executeExpr
 }
 
-private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Action, input: [APIObject.Member], deprecated: Bool = false, async: Bool = false) -> ExprSyntax {
+private func buildUnpackedExecuteExpr(for action: String, metadata: APIModel.Action, input: [APIObject.Member], deprecated: Bool = false, async: Bool = false) -> some ExprSyntaxProtocol {
     let actionExpr = ExprSyntax("self.\(raw: action.lowerFirst())(.init(\(buildInputParameterList(for: input, includeDeprecated: deprecated))), region: region, logger: logger, on: eventLoop)")
     return async ? ExprSyntax("try await \(actionExpr)") : actionExpr
 }
 
-private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> ExprSyntax {
+private func buildPaginateExpr(for action: String, extraArguments: [(String, String)] = []) -> some ExprSyntaxProtocol {
     let extraArgs = LabeledExprListSyntax {
         for (label, value) in extraArguments {
             LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: value)")).with(\.trailingComma, .commaToken())
@@ -79,7 +85,7 @@ private func buildPaginateExpr(for action: String, extraArguments: [(String, Str
     return ExprSyntax("self.client.paginate(input: input, region: region, command: self.\(raw: action.lowerFirst()), \(extraArgs)logger: logger, on: eventLoop)")
 }
 
-private func buildActionDeclSyntax(for action: String, metadata: APIModel.Action, unpacking input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false, deprecated: Bool = false) throws -> FunctionDeclSyntax {
+private func buildActionDeclSyntax(for action: String, metadata: APIModel.Action, unpacking input: [APIObject.Member]? = nil, discardable: Bool, async: Bool = false, deprecated: Bool = false) throws -> some DeclSyntaxProtocol {
     let attributes = {
         if deprecated, let input,
            let availability = buildModelMemberDeprecationAttribute(for: input, functionNameBuilder: { "\(action.lowerFirst())(\($0)region:logger:on:)" }) {
@@ -102,7 +108,7 @@ private func buildActionDeclSyntax(for action: String, metadata: APIModel.Action
         }
 }
 
-func buildActionDecl(for action: String, metadata: APIModel.Action, discardable: Bool, async: Bool = false) throws -> FunctionDeclSyntax {
+func buildActionDecl(for action: String, metadata: APIModel.Action, discardable: Bool, async: Bool = false) throws -> some DeclSyntaxProtocol {
     try buildActionDeclSyntax(for: action, metadata: metadata, discardable: discardable, async: async)
 }
 
@@ -114,27 +120,35 @@ func buildUnpackedActionDecls(for action: String, metadata: APIModel.Action, unp
     }
 }
 
-func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+func buildPaginatedActionDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> some DeclSyntaxProtocol {
     try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: false))
         public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, returning: "(\(raw: output.totalCountType), [\(raw: output.itemType!)])"))
         """) {
-        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action)
+        if let body = buildUnavailableBody(for: action, metadata: metadata) {
+            body
+        } else {
+            buildPaginateExpr(for: action)
+        }
     }
 }
 
-func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+func buildPaginatedActionWithCallbackDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> some DeclSyntaxProtocol {
     try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         \(buildActionAttributeList(for: metadata, discardableResult: true))
         public func \(raw: action.lowerFirst())Paginated\(buildActionSignatureExpr(for: metadata, hasCallback: true))
         """) {
-        buildUnavailableBody(for: action, metadata: metadata) ?? buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")])
+        if let body = buildUnavailableBody(for: action, metadata: metadata) {
+            body
+        } else {
+            buildPaginateExpr(for: action, extraArguments: [("callback", "onResponse")])
+        }
     }
 }
 
-func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> FunctionDeclSyntax {
+func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, output: APIObject) throws -> some DeclSyntaxProtocol {
     try FunctionDeclSyntax("""
         \(raw: buildDocumentation(summary: metadata.name, discussion: metadata.document))
         ///
@@ -142,7 +156,16 @@ func buildActionPaginatorDecl(for action: String, metadata: APIModel.Action, out
         \(buildActionAttributeList(for: metadata, discardableResult: false))
         public func \(raw: action.lowerFirst())Paginator\(buildActionParameterList(for: metadata)) -> TCClient.PaginatorSequences<\(raw: metadata.input)>
         """) {
-        buildUnavailableBody(for: action, metadata: metadata) ??
-            "TCClient.Paginator.makeAsyncSequences(input: input, region: region, command: self.\(raw: action.lowerFirst()), logger: logger, on: eventLoop)"
+        if let body = buildUnavailableBody(for: action, metadata: metadata) {
+            body
+        } else {
+            FunctionCallExprSyntax(callee: ExprSyntax("TCClient.Paginator.makeAsyncSequences")) {
+                LabeledExprSyntax(label: "input", expression: ExprSyntax("input"))
+                LabeledExprSyntax(label: "region", expression: ExprSyntax("region"))
+                LabeledExprSyntax(label: "command", expression: ExprSyntax("self.\(raw: action.lowerFirst())"))
+                LabeledExprSyntax(label: "logger", expression: ExprSyntax("logger"))
+                LabeledExprSyntax(label: "on", expression: ExprSyntax("eventLoop"))
+            }
+        }
     }
 }

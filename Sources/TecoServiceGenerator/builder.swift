@@ -72,7 +72,7 @@ func buildTecoCoreImportDecls(for context: ImportContext) -> CodeBlockItemListSy
     }
 }
 
-func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws -> StructDeclSyntax {
+func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws -> some DeclSyntaxProtocol {
     try StructDeclSyntax("""
         \(raw: buildDocumentation(summary: model.metadata.serviceName.flatMap { "\($0) (\(model.metadata.shortName))" } ?? model.namespace, discussion: model.metadata.document))
         public struct \(raw: model.namespace): TCService
@@ -92,7 +92,7 @@ func buildServiceDecl(with model: APIModel, withErrors hasError: Bool) throws ->
     }
 }
 
-func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> DeclSyntax {
+func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasError: Bool) -> some DeclSyntaxProtocol {
     DeclSyntax("""
         /// Initialize the ``\(raw: serviceMetadata.shortName.upperFirst())`` client.
         ///
@@ -126,7 +126,7 @@ func buildServiceInitializerDecl(with serviceMetadata: APIModel.Metadata, hasErr
         """)
 }
 
-func buildServicePatchSupportDecl(for service: String) throws -> DeclSyntax {
+func buildServicePatchSupportDecl(for service: String) throws -> some DeclSyntaxProtocol {
     try ExtensionDeclSyntax("extension \(raw: service)") {
         DeclSyntax("""
             /// Initializer required by ``with(region:language:endpoint:timeout:byteBufferAllocator:)``.
@@ -138,5 +138,5 @@ func buildServicePatchSupportDecl(for service: String) throws -> DeclSyntax {
                 self.config = service.config.with(patch: patch)
             }
             """)
-    }.as(DeclSyntax.self)!
+    }
 }
