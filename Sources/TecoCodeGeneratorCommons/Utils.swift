@@ -1,7 +1,7 @@
 import Foundation
 import ArgumentParser
-@_spi(Diagnostics) import SwiftParser
-@_spi(RawSyntax) import SwiftSyntax
+import SwiftParser
+import SwiftSyntax
 import SwiftSyntaxBuilder
 #if compiler(>=6.0)
 private import OrderedCollections
@@ -28,20 +28,12 @@ extension String {
         return String(self[...startIndex]).uppercased() + self[index(after: startIndex)...]
     }
 
-    public var isSwiftKeyword: Bool {
-        var string = self
-        if let keyword = string.withSyntaxText(Keyword.init) {
-            return TokenKind.keyword(keyword).isLexerClassifiedKeyword
-        }
-        return false
-    }
-
     public func swiftMemberEscaped() -> String {
-        self == "init" ? "`init`" : self
+        self.isValidSwiftIdentifier(for: .memberAccess) ? "`\(self)`" : self
     }
 
     public func swiftIdentifierEscaped() -> String {
-        (self == "init" || self.isSwiftKeyword) ? "`\(self)`" : self
+        self.isValidSwiftIdentifier(for: .variableName) ? "`\(self)`" : self
     }
 }
 
