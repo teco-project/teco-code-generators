@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+private import RegexBuilder
+private import SwiftSyntax
+#else
 @_implementationOnly import RegexBuilder
 import SwiftSyntax
+#endif
 
 enum ServiceContext {
     @TaskLocal

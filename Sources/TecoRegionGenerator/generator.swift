@@ -1,9 +1,17 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import struct Foundation.URL
+private import SwiftSyntax
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
+import struct Foundation.URL
 import SwiftSyntax
 import TecoCodeGeneratorCommons
+#endif
 
 @main
-struct TecoRegionGenerator: TecoCodeGenerator {
+private struct TecoRegionGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
@@ -90,7 +98,7 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                 DeclSyntax("""
                     /// Returns the default region kind inferred from region ID.
                     private static func defaultKind(from regionId: String) -> Kind {
-                        return regionId.hasSuffix("-fsi") ? .financial : .internal
+                        regionId.hasSuffix("-fsi") ? .financial : .internal
                     }
                     """)
             }

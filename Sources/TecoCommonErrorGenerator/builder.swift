@@ -1,8 +1,14 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
-func buildCommonErrorStructDecl(from errors: [CommonError]) throws -> DeclSyntax {
+func buildCommonErrorStructDecl(from errors: [CommonError]) throws -> some DeclSyntaxProtocol {
     try StructDeclSyntax("""
         /// Common error type returned by Tencent Cloud.
         public struct TCCommonError: TCServiceErrorType
@@ -52,5 +58,5 @@ func buildCommonErrorStructDecl(from errors: [CommonError]) throws -> DeclSyntax
                 }
                 """)
         }
-    }.as(DeclSyntax.self)!
+    }
 }

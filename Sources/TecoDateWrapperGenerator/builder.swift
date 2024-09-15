@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
+#endif
 
 @CodeBlockItemListBuilder
 func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
@@ -16,7 +21,7 @@ func buildImportDecls(for encoding: DateEncoding) -> CodeBlockItemListSyntax {
     DeclSyntax("@_implementationOnly import struct NIOConcurrencyHelpers.NIOLockedValueBox")
 }
 
-func buildDateFormatterDecl(for encoding: DateEncoding) -> DeclSyntax {
+func buildDateFormatterDecl(for encoding: DateEncoding) -> some DeclSyntaxProtocol {
     let dateFormat: String
     switch encoding {
     case .date:

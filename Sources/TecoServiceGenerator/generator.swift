@@ -1,12 +1,23 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import class Foundation.JSONDecoder
+private import struct Foundation.URL
+private import OrderedCollections
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
 import class Foundation.JSONDecoder
+import struct Foundation.URL
 @_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 @main
-struct TecoServiceGenerator: TecoCodeGenerator {
+private struct TecoServiceGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))

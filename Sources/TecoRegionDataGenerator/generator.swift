@@ -1,11 +1,21 @@
+#if compiler(>=6.0)
+private import ArgumentParser
+private import struct Foundation.URL
+private import OrderedCollections
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import ArgumentParser
+import struct Foundation.URL
+@_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
-@_implementationOnly import TecoCore
 import TecoCodeGeneratorCommons
+#endif
 
 @main
-struct TecoRegionDataGenerator: TecoCodeGenerator {
+private struct TecoRegionDataGenerator: TecoCodeGenerator {
     static let startingYear = 2023
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))

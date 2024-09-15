@@ -1,6 +1,25 @@
+#if compiler(>=6.0)
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
+
+func buildRequirementExpr(from source: String) throws -> LabeledExprSyntax {
+    let separator = source.firstIndex(where: { !$0.isLetter && !$0.isNumber && $0 != "_" })
+    let (label, expression): (String?, String)
+    if let separator, source[separator] == ":" {
+        label = .init(source.prefix(upTo: separator))
+        expression = source.suffix(from: source.index(after: separator)).trimmingCharacters(in: .whitespaces)
+    } else {
+        (label, expression) = (nil, source)
+    }
+    let syntax = LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: expression)"))
+    return try LabeledExprSyntax(validating: syntax)
+}
 
 func buildProductExpr(name: String, trailingComma: Bool = false) -> ArrayElementSyntax {
     let valueExpr = ExprSyntax(".library(name: \(literal: name), targets: [\(literal: name)])")

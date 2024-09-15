@@ -1,8 +1,16 @@
+#if compiler(>=6.0)
+public import ArgumentParser
+private import struct Foundation.Calendar
+private import struct Foundation.Date
+private import class Foundation.FileManager
+private import struct Foundation.URL
+#else
 import ArgumentParser
 import struct Foundation.Calendar
 import struct Foundation.Date
 import class Foundation.FileManager
-@_exported import struct Foundation.URL
+import struct Foundation.URL
+#endif
 
 public struct GeneratorContext {
     @TaskLocal

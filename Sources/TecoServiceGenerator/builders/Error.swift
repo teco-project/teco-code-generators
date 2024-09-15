@@ -1,9 +1,16 @@
+#if compiler(>=6.0)
+internal import OrderedCollections
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
+@_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
-@_implementationOnly import OrderedCollections
+#endif
 
-func buildServiceErrorTypeDecl(_ serviceName: String) throws -> ProtocolDeclSyntax {
+func buildServiceErrorTypeDecl(_ serviceName: String) throws -> some DeclSyntaxProtocol {
     let serviceError = "TC\(serviceName)Error"
     return try ProtocolDeclSyntax("""
         /// Service error type returned by `\(raw: serviceName)`.
@@ -18,7 +25,7 @@ func buildServiceErrorTypeDecl(_ serviceName: String) throws -> ProtocolDeclSynt
     }
 }
 
-func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], errorMap: OrderedDictionary<String, APIError>, serviceName: String) throws -> StructDeclSyntax {
+func buildErrorStructDecl(_ qualifiedTypeName: String, domains: [String] = [], errorMap: OrderedDictionary<String, APIError>, serviceName: String) throws -> some DeclSyntaxProtocol {
     let serviceError = "TC\(serviceName)Error"
     return try StructDeclSyntax("public struct \(raw: qualifiedTypeName): \(raw: serviceError)Type") {
         try EnumDeclSyntax("enum Code: String") {

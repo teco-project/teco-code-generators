@@ -1,8 +1,18 @@
+#if compiler(>=6.0)
+internal import class Foundation.Pipe
+internal import class Foundation.Process
+internal import struct Foundation.URL
+private import SwiftSyntax
+private import SwiftSyntaxBuilder
+private import TecoCodeGeneratorCommons
+#else
 import class Foundation.Pipe
 import class Foundation.Process
+import struct Foundation.URL
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#endif
 
 typealias Target = (service: String, version: String)
 
@@ -59,17 +69,4 @@ func generateService(with generator: URL, manifest: URL, to directory: URL, erro
         )
     }
     return (directory.deletingLastPathComponent().lastPathComponent, directory.lastPathComponent)
-}
-
-func parseLabeledExprSyntax(from source: String) throws -> LabeledExprSyntax {
-    let separator = source.firstIndex(where: { !$0.isLetter && !$0.isNumber && $0 != "_" })
-    let (label, expression): (String?, String)
-    if let separator, source[separator] == ":" {
-        label = .init(source.prefix(upTo: separator))
-        expression = source.suffix(from: source.index(after: separator)).trimmingCharacters(in: .whitespaces)
-    } else {
-        (label, expression) = (nil, source)
-    }
-    let syntax = LabeledExprSyntax(label: label, expression: ExprSyntax("\(raw: expression)"))
-    return try LabeledExprSyntax(validating: syntax)
 }

@@ -1,9 +1,16 @@
-import SwiftSyntax
-import SwiftSyntaxBuilder
+#if compiler(>=6.0)
+private import OrderedCollections
+private import RegexBuilder
+internal import SwiftSyntax
+private import SwiftSyntaxBuilder
+#else
 @_implementationOnly import OrderedCollections
 @_implementationOnly import RegexBuilder
+import SwiftSyntax
+import SwiftSyntaxBuilder
+#endif
 
-func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
+func buildGetItemsDecl(with field: APIObject.Field) -> some DeclSyntaxProtocol {
     let memberType = getSwiftMemberType(for: field.metadata)
     return DeclSyntax("""
         /// Extract the returned ``\(raw: memberType)`` list from the paginated response.
@@ -13,7 +20,7 @@ func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
         """)
 }
 
-func buildGetTotalCountDecl(with field: APIObject.Field) -> DeclSyntax {
+func buildGetTotalCountDecl(with field: APIObject.Field) -> some DeclSyntaxProtocol {
     DeclSyntax("""
         /// Extract the total count from the paginated response.
         public func getTotalCount() -> \(raw: getSwiftType(for: field.metadata, forceOptional: true)) {
@@ -22,7 +29,7 @@ func buildGetTotalCountDecl(with field: APIObject.Field) -> DeclSyntax {
         """)
 }
 
-func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) throws -> DeclSyntax {
+func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, metadata: APIObject), output: (name: String, metadata: APIObject)) throws -> some DeclSyntaxProtocol {
     try FunctionDeclSyntax("""
         /// Compute the next request based on API response.
         public func makeNextRequest(with response: \(raw: output.name)) -> \(raw: input.name)?
@@ -31,10 +38,10 @@ func buildMakeNextRequestDecl(for pagination: Pagination, input: (name: String, 
             ReturnStmtSyntax(expression: NilLiteralExprSyntax())
         }
         ReturnStmtSyntax(expression: buildNextInputExpr(for: pagination, members: input.metadata.members))
-    }.as(DeclSyntax.self)!
+    }
 }
 
-private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.Member], prefix: String = "self") -> ExprSyntax {
+private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.Member], prefix: String = "self") -> some ExprSyntaxProtocol {
     func buildInputExpr(for members: [APIObject.Member], updating keyPath: String, defaultValue: String, updatedValueBuilder: (String, String) -> String, prefix: String = "self", excludeOthers: Bool = false) -> FunctionCallExprSyntax {
         precondition(keyPath.isEmpty == false, "'keyPath' must not be empty.")
         // Regex for getting top-level member access.
@@ -117,7 +124,7 @@ private func buildNextInputExpr(for pagination: Pagination, members: [APIObject.
         }
     }()
     // Build the initializer call syntax.
-    return buildInputExpr(for: members, updating: inputKeyPath, defaultValue: defaultValue, updatedValueBuilder: buildUpdatedValue).as(ExprSyntax.self)!
+    return buildInputExpr(for: members, updating: inputKeyPath, defaultValue: defaultValue, updatedValueBuilder: buildUpdatedValue)
 }
 
 private func buildHasMoreResultExpr(for output: APIObject, pagination: Pagination) -> ConditionElementListSyntax {
