@@ -90,7 +90,7 @@ struct TecoRegionGenerator: TecoCodeGenerator {
                 DeclSyntax("""
                     /// Returns the default region kind inferred from region ID.
                     private static func defaultKind(from regionId: String) -> Kind {
-                        return regionId.hasSuffix("-fsi") ? .financial : .internal
+                        regionId.hasSuffix("-fsi") ? .financial : .internal
                     }
                     """)
             }

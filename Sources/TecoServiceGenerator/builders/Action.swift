@@ -24,7 +24,11 @@ private func buildActionAttributeList(for action: APIModel.Action, discardableRe
 
 private func buildUnavailableBody(for action: String, metadata: APIModel.Action) -> (some ExprSyntaxProtocol)? {
     if metadata.status == .deprecated {
-        FunctionCallExprSyntax(calledExpression: ExprSyntax("fatalError")) {
+        FunctionCallExprSyntax(
+            calledExpression: ExprSyntax("fatalError"),
+            leftParen: .leftParenToken(),
+            rightParen: .rightParenToken()
+        ) {
             .init(expression: "'\(action)' is no longer available.".makeLiteralSyntax())
         }
     } else {
