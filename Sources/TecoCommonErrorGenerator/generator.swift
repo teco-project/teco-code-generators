@@ -13,17 +13,17 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoCommonErrorGenerator: TecoCodeGenerator {
+private struct TecoCommonErrorGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var output: URL
+    var output: URL
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var errorFile: URL?
+    var errorFile: URL?
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     func generate() throws {
         let apiErrors = try getAPIErrors(from: errorFile)

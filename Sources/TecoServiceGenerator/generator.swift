@@ -17,23 +17,23 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoServiceGenerator: TecoCodeGenerator {
+private struct TecoServiceGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var source: URL
+    var source: URL
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["json"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var errorFile: URL?
+    var errorFile: URL?
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    fileprivate var outputDir: URL
+    var outputDir: URL
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     @Option(name: .long)
-    fileprivate var version: Int?
+    var version: Int?
 
     func generate() throws {
         // Check for Regex support

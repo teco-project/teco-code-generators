@@ -13,23 +13,23 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoPackageGenerator: TecoCodeGenerator {
+private struct TecoPackageGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    fileprivate var modelDir: URL
+    var modelDir: URL
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    fileprivate var packageDir: URL
+    var packageDir: URL
 
     @Option(name: .long, completion: .file(), transform: URL.init(fileURLWithPath:))
-    fileprivate var serviceGenerator: URL?
+    var serviceGenerator: URL?
 
     @Option(name: .long, transform: buildRequirementExpr)
-    fileprivate var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.6")"#))
+    var tecoCoreRequirement: LabeledExprSyntax = .init(expression: ExprSyntax(#".upToNextMinor(from: "0.5.6")"#))
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     func generate() async throws {
         let serviceDirectories = try contentsOfDirectory(at: modelDir.appendingPathComponent("services"), subdirectoryOnly: true)

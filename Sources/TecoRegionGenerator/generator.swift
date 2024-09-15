@@ -11,14 +11,14 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoRegionGenerator: TecoCodeGenerator {
+private struct TecoRegionGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var output: URL
+    var output: URL
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     func generate() throws {
         let sourceFile = try SourceFileSyntax {

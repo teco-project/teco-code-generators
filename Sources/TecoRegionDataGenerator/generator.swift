@@ -7,6 +7,7 @@ private import SwiftSyntaxBuilder
 private import TecoCodeGeneratorCommons
 #else
 import ArgumentParser
+import struct Foundation.URL
 @_implementationOnly import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -14,17 +15,17 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoRegionDataGenerator: TecoCodeGenerator {
+private struct TecoRegionDataGenerator: TecoCodeGenerator {
     static let startingYear = 2023
 
     @Option(name: .shortAndLong, completion: .file(extensions: ["swift"]), transform: URL.init(fileURLWithPath:))
-    fileprivate var output: URL
+    var output: URL
 
     @Option(name: .long)
-    fileprivate var product: String = "vpc"
+    var product: String = "vpc"
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     func generate() async throws {
         let client = RegionService()

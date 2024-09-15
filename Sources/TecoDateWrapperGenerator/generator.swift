@@ -13,14 +13,14 @@ import TecoCodeGeneratorCommons
 #endif
 
 @main
-struct TecoDateWrapperGenerator: TecoCodeGenerator {
+private struct TecoDateWrapperGenerator: TecoCodeGenerator {
     static let startingYear = 2022
 
     @Option(name: .shortAndLong, completion: .directory, transform: URL.init(fileURLWithPath:))
-    fileprivate var outputDir: URL
+    var outputDir: URL
 
     @Flag
-    fileprivate var dryRun: Bool = false
+    var dryRun: Bool = false
 
     func generate() throws {
         for encoding in DateEncoding.all {
