@@ -1,6 +1,10 @@
 import ArgumentParser
 import class Foundation.JSONDecoder
+#if compiler(>=6.0)
+private import OrderedCollections
+#else
 @_implementationOnly import OrderedCollections
+#endif
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons

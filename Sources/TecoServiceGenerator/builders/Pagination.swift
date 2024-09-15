@@ -1,7 +1,12 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
+#if compiler(>=6.0)
+private import OrderedCollections
+private import RegexBuilder
+#else
 @_implementationOnly import OrderedCollections
 @_implementationOnly import RegexBuilder
+#endif
 
 func buildGetItemsDecl(with field: APIObject.Field) -> DeclSyntax {
     let memberType = getSwiftMemberType(for: field.metadata)

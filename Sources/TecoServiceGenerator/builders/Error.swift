@@ -1,7 +1,11 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import TecoCodeGeneratorCommons
+#if compiler(>=6.0)
+internal import OrderedCollections
+#else
 @_implementationOnly import OrderedCollections
+#endif
 
 func buildServiceErrorTypeDecl(_ serviceName: String) throws -> ProtocolDeclSyntax {
     let serviceError = "TC\(serviceName)Error"

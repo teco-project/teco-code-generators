@@ -1,4 +1,8 @@
+#if compiler(>=6.0)
+private import RegexBuilder
+#else
 @_implementationOnly import RegexBuilder
+#endif
 import SwiftSyntax
 
 enum ServiceContext {

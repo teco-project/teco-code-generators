@@ -1,7 +1,11 @@
 import ArgumentParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
-@_implementationOnly import TecoCore
+#if compiler(>=6.0)
+private import OrderedCollections
+#else
+@_implementationOnly import OrderedCollections
+#endif
 import TecoCodeGeneratorCommons
 
 @main

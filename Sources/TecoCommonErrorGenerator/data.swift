@@ -1,4 +1,8 @@
+#if compiler(>=6.0)
+private import OrderedCollections
+#else
 @_implementationOnly import OrderedCollections
+#endif
 
 // https://cloud.tencent.com/document/product/213/30435#.E5.85.AC.E5.85.B1.E9.94.99.E8.AF.AF.E7.A0.81
 private let tcCommonErrors: [String : String] = [

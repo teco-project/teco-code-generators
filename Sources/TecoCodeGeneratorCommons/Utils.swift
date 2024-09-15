@@ -3,7 +3,11 @@ import ArgumentParser
 @_spi(Diagnostics) import SwiftParser
 @_spi(RawSyntax) import SwiftSyntax
 import SwiftSyntaxBuilder
+#if compiler(>=6.0)
+private import OrderedCollections
+#else
 @_implementationOnly import OrderedCollections
+#endif
 
 extension String {
     public func lowerFirst() -> String {

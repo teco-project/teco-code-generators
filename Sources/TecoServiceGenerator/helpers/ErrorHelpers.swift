@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+internal import OrderedCollections
+private import RegexBuilder
+#else
 @_implementationOnly import OrderedCollections
 @_implementationOnly import RegexBuilder
+#endif
 
 func getErrorDomain(from code: String) -> String? {
     let components = code.split(separator: ".")

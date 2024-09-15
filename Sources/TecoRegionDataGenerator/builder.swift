@@ -1,6 +1,10 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
+#if compiler(>=6.0)
+internal import OrderedCollections
+#else
 @_implementationOnly import OrderedCollections
+#endif
 import TecoCodeGeneratorCommons
 
 func buildRegionExpr(id: String, names: OrderedSet<String>, trailingComma: Bool = false) -> ArrayElementSyntax {

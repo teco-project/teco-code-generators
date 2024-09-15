@@ -1,5 +1,10 @@
+#if compiler(>=6.0)
+internal import OrderedCollections
+internal import TecoCore
+#else
 @_implementationOnly import OrderedCollections
 @_implementationOnly import TecoCore
+#endif
 
 func getRegionMap(from regionInfo: [RegionInfo]) -> OrderedDictionary<String, String> {
     let regions = regionInfo.map { ($0.region, $0.regionName) }
