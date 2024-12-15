@@ -76,5 +76,28 @@ let package = Package(
             dependencies: [
                 .byName(name: "TecoCodeGeneratorCommons"),
             ]),
+        .target(
+            name: "TecoCodeGeneratorTestHelpers",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorCommons"),
+            ]),
+        .testTarget(
+            name: "TecoDateWrapperGeneratorTests",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorTestHelpers"),
+                .byName(name: "TecoDateWrapperGenerator"),
+            ]),
+        .testTarget(
+            name: "TecoCommonErrorGeneratorTests",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorTestHelpers"),
+                .byName(name: "TecoCommonErrorGenerator"),
+            ]),
+        .testTarget(
+            name: "TecoPackageGeneratorTests",
+            dependencies: [
+                .byName(name: "TecoCodeGeneratorTestHelpers"),
+                .byName(name: "TecoPackageGenerator"),
+            ]),
     ]
 )
